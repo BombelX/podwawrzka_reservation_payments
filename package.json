@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "cally": "^0.8.0",
     "daisyui": "^5.3.7"
   }
 }

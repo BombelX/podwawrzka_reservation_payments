@@ -134,8 +134,9 @@ import React from "react";
             parentMonth.addChild(this);
         }
         displayed: boolean = false;
-        backGroundColor: string = "white";
-        borderColor: string = "black";
+        day: number = 0;
+        backGroundColor: string = "bg-gray-900/55";
+        borderColor: string = "border-gray-400/50";
          showInfo() {
             console.log("Day: ",this.dayNumber,"Month: ",this.parentMonth.monthNumber,"Year: ",this.parentMonth.parentYear.yearNumber);
         }
@@ -187,25 +188,31 @@ import React from "react";
     console.log(selectedDate)
     console.log(calendar.getActiveMonth())
 
-    // console.log(calendar.childrens[0].childrens[0].childrens[0].showInfo())
+    function generateDaysInMonth() {
+        const month = calendar.getActiveMonth()
+        const offsetDays = month.childrens[0].dayNumber;
+        
+    }
 
+    const [activeMonth, setActiveMonth] = useState(calendar.getActiveMonth())
 
 
     return(
-        <div className="w-full h-full bg-gray-400 rounded-xl">
+        <div className="w-full h-full bg-gray-400 max-w-[600px] rounded-xl">
 
-            <div className="flex w-[70vw] gap-8 justify-between ">
+            <div className="flex w-[70vw] max-w-[600px] gap-8 justify-between ">
 
-            <button className="btn btn-ghost text-xs m-2 rounded-full hover:bg-gray-600 bg-gray-800/30 border-gray-900">prev</button>
+            <button className="btn btn-ghost text-xs m-2 rounded-full text-white hover:bg-gray-600 bg-gray-800/40 border-gray-400/50">prev</button>
             <div className="flex flex-col justify-center">
                 <div className="badge badge-soft badge-ghost mt-2">{selectedDate.getFullYear()}</div>
                 <div className="badge badge-soft badge-ghost mt-2">{selectedDate.toLocaleString('pl-PL',{month: 'long'})}</div>
             </div>
-            <button className="btn btn-ghost m-2 text-xs rounded-full hover:bg-gray-600 bg-gray-800/30 border-gray-900">next</button>
+            <button className="btn btn-ghost m-2 text-xs rounded-full text-white hover:bg-gray-600 bg-gray-800/40 border-gray-400/50">next</button>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 w-[65vw] p-3">
+            <div className="grid grid-cols-7 gap-2 max-w-[600px] w-[65vw] p-3">
                 {calendar.getActiveMonth().childrens.map(day => (
+
                     <div
                         key={day.dayNumber}
                         className={`badge badge-soft badge-ghost text-md  ${day.borderColor} ${day.backGroundColor} hover:bg-blue-600/60 hover:w-[93%] transition-all  w-[90%] h-full aspect-square flex items-center justify-center`}

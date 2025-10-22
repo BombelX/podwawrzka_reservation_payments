@@ -129,7 +129,9 @@ import React from "react";
         dayNumber: number;
         parentMonth: Month;
         day: number ;
+        selected: boolean = false;
         backGroundColor: string = "bg-gray-900/55";
+        isBeetweenSelected: boolean = false;
         borderColor: string = "border-gray-400/50";
         constructor(parentMonth: Month,dayNumber: number){
             super();
@@ -142,6 +144,24 @@ import React from "react";
             }
 
             parentMonth.addChild(this);
+        }
+        setSelected(value: boolean){
+            this.selected = value;
+            if (value){
+                this.borderColor = "border-red-500"
+            }
+            else{
+                this.borderColor = "border-gray-400/50"
+            }
+        }
+        setIsBetweenSelected(value: boolean) {
+            this.isBeetweenSelected = value;
+            if (value){
+                this.borderColor = "border-green-500"
+            }
+            else{
+                this.borderColor = "border-gray-400/50"
+            }
         }
         calcDayOfWeek(): number {
             const date = new Date(this.parentMonth.parentYear.yearNumber, this.parentMonth.monthNumber , this.dayNumber);
@@ -268,7 +288,6 @@ type CalendarProps = {
         }
     }
     function handleDayHover(day: Day) {
-        console.log("Hovering over day: ", day.dayNumber, " Month: ", day.parentMonth.monthNumber, " Year: ", day.parentMonth.parentYear.yearNumber);
     }
 
     type DateOperationProp = {
@@ -297,19 +316,76 @@ type CalendarProps = {
     }
 
     function handleDayClick(day: Day) {
-        if (!(firstSelectedDate === null)) {
+        console.log("Clicked on day: ", day.dayNumber, " Month: ", day.parentMonth.monthNumber, " Year: ", day.parentMonth.parentYear.yearNumber);
+        console.log("First selected date: ", firstSelectedDate ? firstSelectedDate.dayNumber : "null");
+        console.log("Second selected date: ", secondSelectedDate ? secondSelectedDate.dayNumber : "null");
+        if (firstSelectedDate !== null) {
             if (firstSelectedDate == day){
-                setFirstSelectedDate(null) // reset if clicket on same date
+                setFirstSelectedDate(null) // reset if clicked on same date
+                day.setSelected(false);
+                if (secondSelectedDate !== null){
+                    secondSelectedDate.setSelected(false);
+                    setSecondSelectedDate(null);
+
+                }
             }
             else{
-                
-                
+                if (isDateBefore({ day1: firstSelectedDate, day2: day })){
+                    if (secondSelectedDate !== null){
+                        secondSelectedDate.setSelected(false);
+
+                    }
+                    setSecondSelectedDate(day);
+                    day.setSelected(true);
+                }
+                else{
+                    firstSelectedDate.setSelected(false);
+                    setFirstSelectedDate(day);
+                    day.setSelected(true);
+                }
             }
         }
         else{
             setFirstSelectedDate(day);
-            
+            day.setSelected(true);
         }
+        
+    }
+    function beetweenSelected(oldDay1?: Day, oldDay2?: Day){
+        // if (oldDay1 && oldDay2){
+        //     for (const year: Year in calendar.childrens.find((y) => y.yearNumber>=oldDay1.parentMonth.parentYear.yearNumber && y.yearNumber<= oldDay2.parentMonth.parentYear.yearNumber)){
+        //         if (oldDay1.parentMonth.parentYear === year and oldDay2.parentMonth.parentYear === year )
+        //             {   
+        //                 for(const month: Month in year.childrens.find((m) => m.monthNumber >= oldDay1.parentMonth.monthNumber and month.monthNumber<= oldDay2.parentMonth.monthNumber ))
+        //                     {
+
+        //                     }
+        //             }
+        //         else if(oldDay1.parentMonth.parentYear === year){
+        //                 for(const month: Month in year.childrens.find((m) => m.monthNumber >= oldDay1.parentMonth.monthNumber ))
+        //                     {
+                                
+        //                     }
+        //         }
+        //         else if(oldDay2.parentMonth.parentYear === year)
+        //             {
+        //                 for(const month: Month in year.childrens.find((m) => month.monthNumber<= oldDay2.parentMonth.monthNumber ))
+        //                     {
+                                
+        //                     }
+        //             }
+        //         else{
+        //                 for(const month: Month in year.childrens))
+        //                     {
+                                
+        //                     }
+        //         }
+        //     }
+                
+        // }
+
+        if (firstSelectedDate && secondSelectedDate) 
+            {}
         
     }
     function handleNext() {
@@ -366,7 +442,7 @@ type CalendarProps = {
                 
                 {calendar.getActiveMonth().childrens.map(day => (
                     <div
-                        onClick={(e) => {day.showInfo()}}
+                        onClick={(e) => {handleDayClick(day)}}
                         onMouseOver={(e) => handleDayHover(day)}
                         key={day.dayNumber}
                         className={`badge badge-soft badge-ghost text-md  ${day.borderColor} ${day.backGroundColor} hover:bg-blue-600/60 hover:w-[93%] transition-all  w-[90%] h-full aspect-square flex items-center justify-center`}

@@ -1,5 +1,5 @@
 'use client';
-
+import { useState } from "react";
 import Image from "next/image";
 import React from "react";
 import CalendarComponent from "./components/calendar";
@@ -17,8 +17,11 @@ export default function Home() {
       <label className="text-black" htmlFor="phone">Numer telefonu</label>
       <input className="text-black border-2 border-gray-400 rounded-lg px-4 py-2" id="phone" type="text" />
 
-    <div>
-      <CalendarComponent/>
+    <div className="flex gap-2">
+      <CalendarComponent yearNumber={2025} monthNumber={10} />  
+      {/* 0 to styczeń */}
+      <CalendarComponent />
+
     </div>
 
       <div className="flex items-center justify-center">

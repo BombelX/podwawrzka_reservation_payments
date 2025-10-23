@@ -18,7 +18,7 @@ export default function Home() {
       <input className="text-black border-2 border-gray-400 rounded-lg px-4 py-2" id="phone" type="text" />
 
     <div className="flex gap-2">
-      <CalendarComponent yearNumber={2025} monthNumber={10} />  
+      <CalendarComponent yearNumber={2025} monthNumber={9} />  
       {/* 0 to styczeń */}
       <CalendarComponent />
 

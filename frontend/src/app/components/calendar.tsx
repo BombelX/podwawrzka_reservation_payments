@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from "react";
 import React from "react";
+import { start } from "repl";
 
 
 
@@ -43,7 +44,7 @@ import React from "react";
                 let month = activeYear.childrens.find(m => m.isActive) ?? activeYear.childrens[0];
                 if (!month) {
                     const now = new Date();
-                    month = new Month(activeYear, now.getMonth() + 1);
+                    month = new Month(activeYear, now.getMonth());
                     month.isActive = true;
                 }
                 return month
@@ -90,6 +91,37 @@ import React from "react";
         }
 
     }
+    const daysInMonth: Record<number, number> = {
+        0:31,
+        1:28,
+        2:31,
+        3:30,
+        4:31,
+        5:30,
+        6:31,
+        7:31,
+        8:31,
+        9:30,
+        10:31,
+        11:30,
+        12:31
+    }
+
+    const monthNames: Record<number, string> = {
+        0: "Styczeń",
+        1: "Luty",
+        2: "Marzec",
+        3: "Kwiecień",
+        4: "Maj",
+        5: "Czerwiec",
+        6: "Lipiec",
+        7: "Sierpień",
+        8: "Wrzesień",
+        9: "Październik",
+        10: "Listopad",
+        11: "Grudzień"
+    }
+
     class Month extends CalendarElement
     {
         parentYear: Year;
@@ -130,14 +162,19 @@ import React from "react";
         parentMonth: Month;
         day: number ;
         selected: boolean = false;
-        backGroundColor: string = "bg-gray-900/55";
+        backGroundColor: string = "bg-white";
         isBeetweenSelected: boolean = false;
-        borderColor: string = "border-gray-400/50";
+        borderColor: string = "border-black/90";
+        textColor: string = "text-black"
         constructor(parentMonth: Month,dayNumber: number){
             super();
             this.parentMonth = parentMonth;
             this.dayNumber = dayNumber;
             this.day = this.calcDayOfWeek();
+            if (this.day == 6 || this.day == 7){
+
+                this.textColor = "text-gray-100";
+            }
             const today: Date = new Date();
             if (dayNumber == today.getDate() && parentMonth.monthNumber == today.getMonth() && parentMonth.parentYear.yearNumber == today.getFullYear()){
                 this.backGroundColor = "bg-blue-900/55"
@@ -165,9 +202,10 @@ import React from "react";
         }
         calcDayOfWeek(): number {
             const date = new Date(this.parentMonth.parentYear.yearNumber, this.parentMonth.monthNumber , this.dayNumber);
-            const dayOfWeek:number = date.getDay(); 
-            if (dayOfWeek == 0 || dayOfWeek == 6){
-                this.backGroundColor = "bg-gray-900/75";
+            const dayOfWeek:number = date.getDay() == 0 ? 7 : date.getDay(); 
+            if (dayOfWeek == 6 || dayOfWeek == 7){
+                this.backGroundColor = "bg-black/55";
+                this.textColor = "text-gray-300"
             }
             return dayOfWeek
         }
@@ -184,21 +222,7 @@ function generateDay(month:Month,dayNumber:number): Day{
     }
 
 function generateMonth (year : Year, monthNumber: number): Month{
-    const daysInMonth: Record<number, number> = {
-        0:31,
-        1:28,
-        2:31,
-        3:30,
-        4:31,
-        5:30,
-        6:31,
-        7:31,
-        8:31,
-        9:30,
-        10:31,
-        11:30,
-        12:31
-    }
+
 
     const month = new Month(year,monthNumber);
     let days: number = daysInMonth[monthNumber];
@@ -250,16 +274,13 @@ type CalendarProps = {
     const calendar = calendarRef.current!;
 
 
-    // const [selectedDate, setSelectedDate] = useState(selected)
-
-    
     const [activeMonth, setActiveMonth] = useState<Month>(calendar.getActiveMonth())
-    const [offsetDays, setOffsetDays] = useState<number>(activeMonth.childrens[0].day)
+    const [offsetDays, setOffsetDays] = useState<number>(activeMonth.childrens[0].day);
     const [firstSelectedDate, setFirstSelectedDate] = useState<Day|null>(null);
     const [secondSelectedDate, setSecondSelectedDate] = useState<Day|null>(null);
 
     useEffect(() => {
-        setOffsetDays(activeMonth.childrens[0].day);
+        setOffsetDays(activeMonth.childrens[0].day );
     },[activeMonth]);
 
     function handlePrev() {
@@ -274,6 +295,7 @@ type CalendarProps = {
                 const targetYear = generateYear(calendar, targetYearNumber);
                 targetYear.activate();
                 const targetMonth = targetYear.childrens[11];
+                targetMonth.activate();
                 setActiveMonth(targetMonth);
                 console.log("with year change")
 
@@ -315,79 +337,109 @@ type CalendarProps = {
         }
     }
 
+    function iterateBeetweenDatesYMD(date1:YMD,date2:YMD,activate:boolean):void{
+
+        for (let year : number = date1.y ; year <= date2.y; year++){
+            const startMonth : number  = (year == date1.y) ? date1.m : 0;
+            const endMonth: number = (year == date2.y) ? date2.m : 11;
+            for (let month: number = startMonth; month<=endMonth; month++){
+                const startDay: number = (date1.y == year && date1.m == month) ? date1.d : 0;
+                const endDay: number = (date2.y == year && date2.m == month) ? date2.d : daysInMonth[month]; 
+                for (let day:number = startDay; day<= endDay; day++){
+                    const targetYear = calendar.childrens.find((y) => y.yearNumber == year);
+                    const targetMonth =  targetYear?.childrens.find((m) => m.monthNumber == month);
+                    const targetDay = targetMonth?.childrens.find((d)=> d.dayNumber  == day)
+                    if (targetDay){
+                        targetDay.setIsBetweenSelected(activate)
+                    }                  
+                }
+            }
+        }
+
+
+    }
+
+    function beetweenSelected(day1: Day|null, day2: Day|null, oldDay1: Day|null, oldDay2: Day|null): void{
+        console.log(day1, day2, oldDay1, oldDay2);
+        if (oldDay1 && oldDay2){
+            const oldDay1YMD: YMD = dayToYMD(oldDay1)
+            const oldDay2YMD: YMD = dayToYMD(oldDay2)
+            iterateBeetweenDatesYMD(oldDay1YMD,oldDay2YMD,false)
+        }
+        if (day1 && day2){
+            const day1YMD: YMD = dayToYMD(day1)
+            const day2YMD: YMD = dayToYMD(day2)
+            iterateBeetweenDatesYMD(day1YMD,day2YMD,true);
+            day1.setSelected(true);
+            day2.setSelected(true);
+        }
+
+        
+    }
     function handleDayClick(day: Day) {
         console.log("Clicked on day: ", day.dayNumber, " Month: ", day.parentMonth.monthNumber, " Year: ", day.parentMonth.parentYear.yearNumber);
         console.log("First selected date: ", firstSelectedDate ? firstSelectedDate.dayNumber : "null");
         console.log("Second selected date: ", secondSelectedDate ? secondSelectedDate.dayNumber : "null");
         if (firstSelectedDate !== null) {
+            console.log("Kot kocha zabe-1");
             if (firstSelectedDate == day){
+                console.log("Kot kocha zabe0");
                 setFirstSelectedDate(null) // reset if clicked on same date
                 day.setSelected(false);
-                if (secondSelectedDate !== null){
-                    secondSelectedDate.setSelected(false);
-                    setSecondSelectedDate(null);
 
+                if (secondSelectedDate !== null){
+                    console.log("Kot kocha zabe2");
+                    secondSelectedDate.setSelected(false);
+                    beetweenSelected(firstSelectedDate, day, firstSelectedDate, secondSelectedDate);
+                    setSecondSelectedDate(null);
                 }
+                day.setSelected(false);
+                return;
             }
             else{
                 if (isDateBefore({ day1: firstSelectedDate, day2: day })){
+                    console.log("Kot kocha zabe3");
                     if (secondSelectedDate !== null){
+                        console.log("Kot kocha zabe4");
                         secondSelectedDate.setSelected(false);
-
                     }
+                    beetweenSelected(firstSelectedDate, day, firstSelectedDate, secondSelectedDate!);
                     setSecondSelectedDate(day);
                     day.setSelected(true);
                 }
                 else{
+                    console.log("Kot kocha zabe5");
                     firstSelectedDate.setSelected(false);
+                    beetweenSelected(null, null, firstSelectedDate, secondSelectedDate);
                     setFirstSelectedDate(day);
                     day.setSelected(true);
                 }
             }
         }
         else{
+            console.log("Kot kocha zabe6");
             setFirstSelectedDate(day);
             day.setSelected(true);
         }
+        console.log("After Click - First selected date: ", firstSelectedDate ? firstSelectedDate.dayNumber : "null");
+        console.log("After Click - Second selected date: ", secondSelectedDate ? secondSelectedDate.dayNumber : "null");
+        console.log(day);
         
     }
-    function beetweenSelected(oldDay1?: Day, oldDay2?: Day){
-        // if (oldDay1 && oldDay2){
-        //     for (const year: Year in calendar.childrens.find((y) => y.yearNumber>=oldDay1.parentMonth.parentYear.yearNumber && y.yearNumber<= oldDay2.parentMonth.parentYear.yearNumber)){
-        //         if (oldDay1.parentMonth.parentYear === year and oldDay2.parentMonth.parentYear === year )
-        //             {   
-        //                 for(const month: Month in year.childrens.find((m) => m.monthNumber >= oldDay1.parentMonth.monthNumber and month.monthNumber<= oldDay2.parentMonth.monthNumber ))
-        //                     {
-
-        //                     }
-        //             }
-        //         else if(oldDay1.parentMonth.parentYear === year){
-        //                 for(const month: Month in year.childrens.find((m) => m.monthNumber >= oldDay1.parentMonth.monthNumber ))
-        //                     {
-                                
-        //                     }
-        //         }
-        //         else if(oldDay2.parentMonth.parentYear === year)
-        //             {
-        //                 for(const month: Month in year.childrens.find((m) => month.monthNumber<= oldDay2.parentMonth.monthNumber ))
-        //                     {
-                                
-        //                     }
-        //             }
-        //         else{
-        //                 for(const month: Month in year.childrens))
-        //                     {
-                                
-        //                     }
-        //         }
-        //     }
-                
-        // }
-
-        if (firstSelectedDate && secondSelectedDate) 
-            {}
-        
+    type YMD={
+        y: number, m: number, d: number
     }
+
+    function dayToYMD(day:Day): YMD {
+        return {
+            y: day.parentMonth.parentYear.yearNumber,
+            m: day.parentMonth.monthNumber,
+            d: day.dayNumber
+        };
+    }
+
+    
+
     function handleNext() {
         if (activeMonth.monthNumber<11){
             const target : Month = activeMonth.parentYear.childrens[activeMonth.monthNumber+1]
@@ -416,14 +468,15 @@ type CalendarProps = {
     }   
 
     return(
-        <div className="w-full h-full bg-gray-400 max-w-[600px] rounded-2xl">
+        <div className="w-full h-full bg-black/20 max-w-[600px] rounded-2xl">
 
             <div className="flex w-[70vw] max-w-[600px] gap-8 justify-between ">
 
             <button onClick={(e) => {handlePrev()}} className="btn btn-ghost text-xs m-2 rounded-full text-white hover:bg-gray-600 bg-gray-800/40 border-gray-400/50">prev</button>
             <div className="flex flex-col justify-center">
-                <div className="badge badge-soft badge-ghost mt-2">{activeMonth.parentYear.yearNumber}</div>
-                <div className="badge badge-soft badge-ghost mt-2">{activeMonth.monthNumber+1}</div>
+                <div className="badge badge-soft badge-ghost mt-2 ">{activeMonth.parentYear.yearNumber}</div>
+                <div className="badge badge-soft badge-ghost mt-2">{monthNames[activeMonth.monthNumber]}</div>
+
             </div>
             <button onClick={(e) => {handleNext()}} className="btn btn-ghost m-2 text-xs rounded-full text-white hover:bg-gray-600 bg-gray-800/40 border-gray-400/50">next</button>
             </div>
@@ -440,14 +493,15 @@ type CalendarProps = {
                 
 
                 
-                {calendar.getActiveMonth().childrens.map(day => (
+                {activeMonth.childrens.map(day => (
                     <div
                         onClick={(e) => {handleDayClick(day)}}
                         onMouseOver={(e) => handleDayHover(day)}
                         key={day.dayNumber}
                         className={`badge badge-soft badge-ghost text-md  ${day.borderColor} ${day.backGroundColor} hover:bg-blue-600/60 hover:w-[93%] transition-all  w-[90%] h-full aspect-square flex items-center justify-center`}
                     >
-                        {day.dayNumber}
+                        <h1 className={` ${day.textColor} `}>{day.dayNumber}</h1>
+
                     </div>
                 ))}
             </div>

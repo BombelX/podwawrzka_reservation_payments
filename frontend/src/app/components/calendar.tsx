@@ -338,14 +338,12 @@ type CalendarProps = {
                 const targetMonth = targetYear.childrens[11];
                 targetMonth.activate();
                 setActiveMonth(targetMonth);
-                console.log("with year change")
 
             } 
             else{
                 const targetYear = calendar.childrens.find(y => y.yearNumber === targetYearNumber);
                 const targetMonth = targetYear!.childrens[11];
                 setActiveMonth(targetMonth);
-                console.log("without year change")
             }
             
         }
@@ -432,7 +430,6 @@ type CalendarProps = {
     }
 
     function beetweenSelected(day1: Day|null, day2: Day|null, oldDay1: Day|null, oldDay2: Day|null): void{
-        console.log(day1, day2, oldDay1, oldDay2);
         if (oldDay1 && oldDay2){
             const oldDay1YMD: YMD = dayToYMD(oldDay1)
             const oldDay2YMD: YMD = dayToYMD(oldDay2)

@@ -63,16 +63,16 @@ Create a `.env` file inside `backend/`:
 ```dotenv
 PORT=3000
 DATABASE_URL=./data/app.db
-PRZELEWY24_MERCHANT_ID=""
-PRZELEWY24_POS_ID=""
-PRZELEWY24_API_KEY=""
-PRZELEWY24_CRC=""
-PRZELEWY24_SANDBOX=true
+P24_MERCHANT_ID=""
+P24_POS_ID=""
+P24_API_KEY=""
+P24_CRC=""
+P24_SANDBOX=true
 WORDPRESS_ALLOWED_ORIGINS=https://podwawrzka.pl
 ```
 
 - `DATABASE_URL` keeps SQLite next to the codebase for local development.
-- `PRZELEWY24_*` credentials come from the merchant panel; use sandbox keys while testing payments.
+- `P24_*` credentials come from the Przelewy24 merchant panel; use sandbox keys while testing payments.
 - `WORDPRESS_ALLOWED_ORIGINS` is enforced by CORS to accept requests from the production site only.
 
 For the frontend create `frontend/.env.local`:

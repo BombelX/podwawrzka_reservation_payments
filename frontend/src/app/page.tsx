@@ -3,6 +3,8 @@ import { useState } from "react";
 import Image from "next/image";
 import React from "react";
 import CalendarComponent from "./components/calendar";
+import { randomUUID } from "crypto";
+import { redirect } from "next/dist/server/api-utils";
 
 export default function Home() {
 
@@ -22,6 +24,12 @@ export default function Home() {
   const [CalendarSelectedDate,setCalendarSelectedDate] = useState<CalendarDate|null>(null);
   const [guestNumber, setGuestNumber] = useState<number>(2);
   const [isPurchaseConfirmed, setIsPurchaseConfirmed] = useState<string>("hidden");
+  const [contactData, setContactData] = useState({
+    name: "test",
+    surname: "test",
+    email: "test@test.com",
+    phone: "123456789"
+  });
 
 
   return (
@@ -33,7 +41,7 @@ export default function Home() {
       <fieldset className="fieldset">
       <legend className="fieldset-legend">Dane kontaktowe</legend>
       <label>Imię i nazwisko</label>
-      <input className="border-1 input bg-white text-black border-black rounded" type="text" />
+      <input value={contactData.name} onChange={(e) => setContactData({ ...contactData, name: e.target.value })} className="border-1 input bg-white text-black border-black rounded" type="text" />
       <label>Adres e-mail:</label>
       <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
         <svg className="h-5 w-5 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -151,7 +159,33 @@ export default function Home() {
     </div>
       <div className="flex flex-col gap-2 items-center justify-center">
         <button
-        onClick={() =>{
+        onClick={async () =>{
+          const paymentLink = await fetch("http://localhost:3100/payments/begin",{
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              sid: crypto.randomUUID(),
+              amount: 10000,
+              email: contactData.email,
+              name: contactData.name,
+              surname: contactData.surname,
+              phone: contactData.phone,
+              start: CalendarSelectedDate ? new Date(CalendarSelectedDate.start.year, CalendarSelectedDate.start.month , CalendarSelectedDate.start.day) : null,
+              end: CalendarSelectedDate ? new Date(CalendarSelectedDate.end.year, CalendarSelectedDate.end.month , CalendarSelectedDate.end.day) : null,
+              arrivalTime: 0
+            })
+          })
+          const paymentLinkData = await paymentLink.json();
+          if (paymentLinkData.url){
+            window.location.href = paymentLinkData.url;
+          }
+
+
+
+
+
           if (isPurchaseConfirmed == ""){
             setIsPurchaseConfirmed("hidden")
           }

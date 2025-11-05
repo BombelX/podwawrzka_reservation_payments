@@ -28,28 +28,19 @@ const PaymentsData = z.object(
 
 
 router.get("/testAccess", async (_req, res) => {
-    // testAccess wymaga Basic auth na bazie POS_ID i API_KEY (nie report key!)
     const P24_POS_ID = (process.env.P24_POS_ID ?? "").trim();
-    // UWAGA: używamy wyłącznie REST API KEY. Report key nie działa do Basic Auth i spowoduje 401.
     const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
-    const sandbox = String(process.env.P24_SANDBOX ?? "true").toLowerCase() === "true";
-    const baseUrl = sandbox
-        ? "https://sandbox.przelewy24.pl"
-        : "https://secure.przelewy24.pl";
+    const baseUrl =  "https://sandbox.przelewy24.pl";
 
     if (!P24_POS_ID || !P24_API_KEY) {
         return res.status(500).json({ error: "Brak P24_POS_ID lub P24_API_KEY (REST API KEY z panelu)" });
     }
-
     const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
-
     try {
         const response = await fetch(`${baseUrl}/api/v1/testAccess`, {
             method: "GET",
             headers: { Authorization: `Basic ${auth}` },
         });
-
-
         const text = await response.text();
         console.log(text)
         return res.status(response.ok ? 200 : response.status).send(text);
@@ -192,14 +183,14 @@ router.get("/testAccess", async (_req, res) => {
     // })
 
 router.post("/begin", async (req, res) => {
-  // 1) Walidacja wejścia
+
   const parsed = PaymentsData.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Wrong Payment Data", details: parsed.error.issues });
   }
   const data = parsed.data;
+  console.log("Parsed data:", data);
 
-  // 2) Zapis bazowy (user/reservation/payment) w 1 transakcji
   let paymentId: number | undefined;
   try {
     db.transaction((tx) => {
@@ -228,81 +219,55 @@ router.post("/begin", async (req, res) => {
     return res.status(500).json({ error: "DB transaction failed", details: e?.message });
   }
 
-  // 3) Konfiguracja P24 (używamy PROD/SANDBOX spójnie)
-  const sandbox = String(process.env.P24_SANDBOX ?? "true").toLowerCase() === "true";
-  const baseUrl = sandbox ? "https://sandbox.przelewy24.pl" : "https://secure.przelewy24.pl";
+    const P24_POS_ID = (process.env.P24_POS_ID ?? "").trim();
+    const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
+    const baseUrl =  "https://sandbox.przelewy24.pl";
 
-  const P24_POS_ID_STR = (process.env.P24_POS_ID ?? "").trim();
-  const P24_API_KEY    = (process.env.P24_API_KEY ?? "").trim(); // bez fallbacku – unikamy pomyłek środowisk
-  const P24_MERCHANT_ID_STR = (process.env.P24_MERCHANT_ID ?? P24_POS_ID_STR).trim(); // domyślnie = POS
-  const P24_CRC        = (process.env.P24_CRC ?? "").trim();
-
-  if (!P24_POS_ID_STR || !P24_API_KEY || !P24_MERCHANT_ID_STR || !P24_CRC) {
-    return res.status(500).json({
-      error: "Brak konfiguracji P24",
-      missing: {
-        P24_POS_ID: !!P24_POS_ID_STR,
-        P24_API_KEY: !!P24_API_KEY,
-        P24_MERCHANT_ID: !!P24_MERCHANT_ID_STR,
-        P24_CRC: !!P24_CRC,
-      },
-    });
-  }
-
-  const posId = Number(P24_POS_ID_STR);
-  const merchantId = Number(P24_MERCHANT_ID_STR);
-  if (!Number.isFinite(posId) || !Number.isFinite(merchantId)) {
-    return res.status(500).json({ error: "POS_ID / MERCHANT_ID muszą być liczbami całkowitymi" });
-  }
-
-  // 4) Przygotowanie pól transakcji
-  // kwota w groszach (jeśli przyszła 123.45 -> 12345), u Ciebie już przychodzi 10000, więc pozostaje 10000
-  const rawAmount = Number(data.amount);
-  const amount = Number.isInteger(rawAmount) ? rawAmount : Math.round(rawAmount * 100);
-
+    if (!P24_POS_ID || !P24_API_KEY) {
+        return res.status(500).json({ error: "Brak P24_POS_ID lub P24_API_KEY (REST API KEY z panelu)" });
+    }
+  const P24_CRC = (process.env.P24_CRC ?? "").trim();
   // sessionId (<=100 znaków zgodnie z zaleceniami)
   const sessionId = String(data.sid).slice(0, 100);
 
   // sign = sha384("sessionId|merchantId|amount|currency|crc")
-  const signBase = `${sessionId}|${merchantId}|${amount}|PLN|${P24_CRC}`;
-  const sign = crypto.createHash("sha384").update(signBase).digest("hex");
-
-  // Basic Auth = base64("posId:apiKey")
-  const basic = Buffer.from(`${P24_POS_ID_STR}:${P24_API_KEY}`).toString("base64");
-
-  // 5) Rejestracja transakcji w P24
+  const params = {
+    sessionId: String(parsed.data.sid), // Tutaj należy umieścić unikalne wygenerowane ID sesji
+    merchantId: Number(P24_POS_ID), // Tutaj należy umieścić ID Sprzedawcy z panelu Przelewy24
+    amount: Number(parsed.data.amount), // Tutaj należy umieścić kwotę transakcji w groszach, 1234 oznacza 12,34 PLN
+    currency: "PLN", // Tutaj należy umieścić walutę transakcji
+    crc: String(P24_CRC) // Tutaj należy umieścić pobrany klucz CRC z panelu Przelewy24
+  };
+  // Sklejanie parametrów w ciąg
+  const combinedString = JSON.stringify(params);
+  const hash = crypto.createHash('sha384').update(combinedString).digest('hex');
+  console.log('Suma kontrolna parametrów wynosi:', hash);
+  const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
   try {
-    console.log("[P24] Using", sandbox ? "SANDBOX" : "PROD", "environment");
-    console.log("[P24] Register endpoint:", `${baseUrl}/api/v1/transaction/register`);
-    console.log("[P24] posId:", posId, "merchantId:", merchantId);
-    console.log("[P24] signBase:", signBase);
 
     const response = await fetch(`${baseUrl}/api/v1/transaction/register`, {
       method: "POST",
+      redirect: "manual",
       headers: {
-        "Authorization": `Basic ${basic}`,
+        Authorization: `Basic ${auth}`,
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
       body: JSON.stringify({
-        merchantId,
-        posId,
-        sessionId,
-        amount,
-        currency: "PLN",
-        description: `Opłata za rezerwacje nr ${paymentId}`,
-        email: data.email,
-        client: `${data.name} ${data.surname}`,
-        country: "PL",
-        phone: data.phone,
-        language: "pl",
-        urlReturn: `https://podwawrzka.pl/${sessionId}`,
-        urlStatus: `https://podwawrzka.pl/payments/status/change/${sessionId}`,
-        timeLimit: 0,
-        waitForResult: true,
-        regulationAccept: true,
-        transferLabel: `tranzakcja nr. ${paymentId}`,
-        sign,
+        "merchantId": P24_POS_ID,
+        "posId": P24_POS_ID,
+        "sessionId": String(parsed.data.sid),
+        "amount": parsed.data.amount,
+        "currency": "PLN",
+        "description": `Opłata za rezerwacje nr ${paymentId}`,
+        "email": String(data.email),
+        "client": `${data.name} ${data.surname}`,
+        "country": "PL",
+        "phone": String(data.phone),
+        "language": "pl",
+        "urlReturn": `https://podwawrzka.pl/${sessionId}`,
+        "urlStatus": `https://podwawrzka.pl/payments/status/change/${sessionId}`,
+        "sign": hash,
       }),
     });
 
@@ -324,7 +289,7 @@ router.post("/begin", async (req, res) => {
       return res.status(502).json({ error: "Brak tokenu w odpowiedzi P24", details: payload });
     }
 
-    const redirectBase = sandbox ? "https://sandbox.przelewy24.pl" : "https://secure.przelewy24.pl";
+    const redirectBase =  "https://sandbox.przelewy24.pl";
     return res.json({ url: `${redirectBase}/trnRequest/${token}` });
 
   } catch (e: any) {

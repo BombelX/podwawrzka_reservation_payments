@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db/client";
-import { reservations } from "../db/schema";
-import { and, lte, gte } from "drizzle-orm";
+import { reservations, users } from "../db/schema";
+import { and, or, gte, lte, sql,count } from "drizzle-orm";
+import { parse } from "node:path";
+import { error } from "node:console";
 
 const router = Router();
 
@@ -49,6 +51,72 @@ const ReservationMonth = z.object({
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
+const ReservationRequest = z.object({
+    start: z.string().refine((date) => !isNaN(Date.parse(date)), {
+        message: "Invalid date format"
+    }),
+    end: z.string().refine((date) => !isNaN(Date.parse(date)), {
+        message: "Invalid date format"
+    }),
+    guestName: z.string().min(1),
+    guestEmail: z.string().email(),
+    guestPhone: z.string().min(1)
+});
+
+
+
+router.post("/make", async(req, res) => {
+    const parsed = ReservationRequest.safeParse(req.query)
+    if (!parsed.success){
+        return res.status(400).json({
+            error:"Wrong DATE",
+        })
+    }
+
+    const startDate:Date = new Date(parsed.data.start);
+    const today : Date = new Date();
+    if (startDate < today){
+        return res.status(400).json({
+            error: "Nie da się zarezerować przeszłośći"
+        })
+    }
+
+
+const resultOcupied = await db
+  .select({ count: count() })
+  .from(reservations)
+  .where(
+    and(
+    lte(reservations.start, parsed.data.end),
+    gte(reservations.end, parsed.data.start)
+    )
+  );
+
+
+
+const ocupied = Number(resultOcupied[0] ?? 0)
+if (ocupied == 0){
+    console.log("Można Zarezerwować")
+
+    const insertReservation = await db
+    .insert(reservations).values({
+        start:parsed.data.start,
+        end:parsed.data.end,
+    })
+    const insertUsers = await db
+    .insert(users).values
+}
+else{
+    return res.status(400).json(
+    {
+        error: "Ktoś zarezerowwał ten termin przed toba :c"
+    }
+    )
+}
+
+}),
+
 router.get("/already", async(req,res) =>{
     const parsed = ReservationMonth.safeParse(req.query)
     if (!parsed.success){
@@ -75,7 +143,7 @@ router.get("/already", async(req,res) =>{
 
     return res.json(result);
 
-}
+},
 )
 
 

@@ -105,7 +105,10 @@ if (ocupied == 0){
         end:parsed.data.end,
     })
     const insertUsers = await db
-    .insert(users).values
+    .insert(users).values({
+        email:"email@email.com",
+        phone:"+48420420420"
+    })
 }
 else{
     return res.status(400).json(

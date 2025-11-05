@@ -160,7 +160,7 @@ export default function Home() {
       <div className="flex flex-col gap-2 items-center justify-center">
         <button
         onClick={async () =>{
-          const paymentLink = await fetch("http://localhost:3100/payments/begin",{
+          const paymentLink = await fetch("http://46.224.13.142:3100/payments/begin",{
             method: "POST",
             headers: {
               "Content-Type": "application/json"

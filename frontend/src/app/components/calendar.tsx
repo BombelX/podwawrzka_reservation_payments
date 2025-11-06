@@ -563,7 +563,8 @@ type CalendarProps = {
     <div
       className="
         mt-3 grid grid-cols-7 gap-x-2 gap-y-3
-        [grid-auto-rows:minmax(2.6rem,1fr)]
+        auto-rows-[minmax(2.6rem,_auto)]
+
       "
     >
       {['Pn','Wt','Śr','Cz','Pt','Sb','Nd'].map((d, i) => (
@@ -579,9 +580,16 @@ type CalendarProps = {
         </div>
       ))}
 
-      {Array.from({ length: Math.max(0, offsetDays - 1) }).map((_, i) => (
+      {/* {Array.from({ length: Math.max(0, offsetDays - 1) }).map((_, i) => (
         <div key={`pad-${i}`} aria-hidden className="h-12" />
-      ))}
+      ))} */}
+      {Array.from({ length: Math.max(0, offsetDays - 1) }).map((_, i) => (
+       <div
+         key={`pad-${i}`}
+         aria-hidden
+         className="aspect-square w-full rounded-xl border invisible"
+       />
+     ))}
 
       {activeMonth.childrens.map((day) => (
         <button

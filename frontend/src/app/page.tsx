@@ -159,6 +159,32 @@ export default function Home() {
     </div>
       <div className="flex flex-col gap-2 items-center justify-center">
         <button
+        onClick={async () => {
+          if (!CalendarSelectedDate){
+            return;
+          }
+          else{
+            const response = await fetch("http://46.224.13.142:3100/payments/make", {
+              method: "POST",
+              headers : {
+                "Content-Type":"application/json",
+              },
+              body: JSON.stringify({
+                start:"",
+                end:"",
+                guestName:"",
+                guestSurname:"",
+                guestEmail:"",
+                arrivalTime:"",
+                nights: 0,
+                price: 222,
+                how_many_people: 2
+              })
+          }
+
+        )
+        }}}>Dodaj Do Rezrewacji</button>
+        <button
         onClick={async () =>{
           const paymentLink = await fetch("http://46.224.13.142:3100/payments/begin",{
             method: "POST",

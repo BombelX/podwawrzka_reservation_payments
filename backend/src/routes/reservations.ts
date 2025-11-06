@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db/client";
 import { reservations, users } from "../db/schema";
-import { and, or, gte, lte, sql,count } from "drizzle-orm";
+import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
 import { parse } from "node:path";
 import { error } from "node:console";
 
@@ -60,17 +60,26 @@ const ReservationRequest = z.object({
         message: "Invalid date format"
     }),
     guestName: z.string().min(1),
+    guestSurname: z.string().min(1),
     guestEmail: z.string().email(),
-    guestPhone: z.string().min(1)
+    guestPhone: z.string().min(1),
+    arrivalTime: z.string().optional(),
+    nights: z.coerce.number(),
+    price: z.coerce.number(),
+    how_many_people: z.coerce.number().optional().default(2),
 });
 
 
 
 router.post("/make", async(req, res) => {
+    console.log("[REQ] /reservations/make query:", req.query);
     const parsed = ReservationRequest.safeParse(req.query)
     if (!parsed.success){
+        console.log("[VALIDATION ERROR]", parsed.error.issues);
         return res.status(400).json({
-            error:"Wrong DATE",
+            error: "Invalid reservation data",
+            details: parsed.error.issues,
+            received: req.query,
         })
     }
 
@@ -83,37 +92,75 @@ router.post("/make", async(req, res) => {
     }
 
 
-const resultOcupied = await db
-  .select({ count: count() })
-  .from(reservations)
-  .where(
-    and(
-    lte(reservations.start, parsed.data.end),
-    gte(reservations.end, parsed.data.start)
-    )
-  );
+    const resultOccupied = await db
+        .select({ count: count() })
+        .from(reservations)
+        .where(
+            and(
+                lte(reservations.start, parsed.data.end),
+                gte(reservations.end, parsed.data.start)
+            )
+        );
+
+    const occupiedCount = Number(resultOccupied[0]?.count ?? 0);
+    if (occupiedCount === 0) {
+        console.log("Można Zarezerwować")
+
+        let usr_id : number;
+        const isUsers = await db
+        .select()
+        .from(users)
+        .where(
+            or(
+                eq(users.email, parsed.data.guestEmail),
+                eq(users.phone, parsed.data.guestPhone)
+            )
+        )
+        
+        if (isUsers.length ===  0){
+            const insertUsers = await db
+            .insert(users).values({
+                email:parsed.data.guestEmail,
+                phone:parsed.data.guestPhone,
+                name: parsed.data.guestName,
+                surname: parsed.data.guestSurname,
+            })
+            usr_id = insertUsers.lastInsertRowid as number;
+        }
+        else{
+            usr_id = isUsers[0].id
+        }
+
+        const insertReservation = await db
+        .insert(reservations).values({
+            start:parsed.data.start,
+            end:parsed.data.end,
+            user_id: usr_id,
+            arrivalTime: parsed.data.arrivalTime,
+            how_many_people: parsed.data.how_many_people,
+            nights: parsed.data.nights,
+            price: parsed.data.price,
+        })
+        return res.status(200).json(
+        {
+            success: "Zarezerwowano pomyślnie",
+            reservationId: insertReservation.lastInsertRowid
+        }
+        )
 
 
 
-const ocupied = Number(resultOcupied[0] ?? 0)
-if (ocupied == 0){
-    console.log("Można Zarezerwować")
 
-    const insertReservation = await db
-    .insert(reservations).values({
-        start:parsed.data.start,
-        end:parsed.data.end,
-    })
-    const insertUsers = await db
-    .insert(users).values
-}
-else{
-    return res.status(400).json(
-    {
-        error: "Ktoś zarezerowwał ten termin przed toba :c"
+
+        
+
+    } else {
+        return res.status(400).json(
+        {
+            error: "Ktoś zarezerowwał ten termin przed toba :c"
+        }
+        )
     }
-    )
-}
 
 }),
 
@@ -142,6 +189,7 @@ router.get("/already", async(req,res) =>{
         );
 
     return res.json(result);
+    
 
 },
 )

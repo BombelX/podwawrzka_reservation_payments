@@ -64,18 +64,22 @@ const ReservationRequest = z.object({
     guestEmail: z.string().email(),
     guestPhone: z.string().min(1),
     arrivalTime: z.string().optional(),
-    nights: z.number(),
-    price: z.number(),
-    how_many_people: z.number().optional().default(2),
+    nights: z.coerce.number(),
+    price: z.coerce.number(),
+    how_many_people: z.coerce.number().optional().default(2),
 });
 
 
 
 router.post("/make", async(req, res) => {
+    console.log("[REQ] /reservations/make query:", req.query);
     const parsed = ReservationRequest.safeParse(req.query)
     if (!parsed.success){
+        console.log("[VALIDATION ERROR]", parsed.error.issues);
         return res.status(400).json({
-            error:"Wrong DATE",
+            error: "Invalid reservation data",
+            details: parsed.error.issues,
+            received: req.query,
         })
     }
 
@@ -88,18 +92,18 @@ router.post("/make", async(req, res) => {
     }
 
 
-    const resultOcupied = await db
-    .select({ count: count() })
-    .from(reservations)
-    .where(
-        and(
-        lte(reservations.start, parsed.data.end),
-        gte(reservations.end, parsed.data.start)
-        )
-    );
+    const resultOccupied = await db
+        .select({ count: count() })
+        .from(reservations)
+        .where(
+            and(
+                lte(reservations.start, parsed.data.end),
+                gte(reservations.end, parsed.data.start)
+            )
+        );
 
-    const ocupied = Number(resultOcupied[0] ?? 0)
-    if (ocupied == 0){
+    const occupiedCount = Number(resultOccupied[0]?.count ?? 0);
+    if (occupiedCount === 0) {
         console.log("Można Zarezerwować")
 
         let usr_id : number;

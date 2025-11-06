@@ -191,12 +191,23 @@ router.post("/begin", async (req, res) => {
   const data = parsed.data;
   console.log("Parsed data:", data);
 
+  // compute derived reservation fields
+  const startDate = data.start;
+  const endDate = data.end;
+  const msPerDay = 1000 * 60 * 60 * 24;
+  // at least 1 night
+  const nights = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / msPerDay));
+  // price as integer (assume incoming `amount` is already in minor units or integer)
+  const price = Math.round(Number(data.amount));
+
   let paymentId: number | undefined;
   try {
     db.transaction((tx) => {
       const u = tx.insert(users).values({
         email: data.email,
         phone: data.phone,
+        name: data.name,
+        surname: data.surname,
       }).run();
       const userId = Number(u.lastInsertRowid);
 
@@ -204,6 +215,10 @@ router.post("/begin", async (req, res) => {
         start: data.start.toISOString(),
         end: data.end.toISOString(),
         arrivalTime: data.arrivalTime != null ? String(data.arrivalTime) : null,
+        user_id: userId,
+        nights,
+        price,
+        how_many_people: 2,
       }).run();
       const reservationId = Number(r.lastInsertRowid);
 

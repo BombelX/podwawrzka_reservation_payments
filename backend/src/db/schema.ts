@@ -24,8 +24,14 @@ export const users = sqliteTable("users",{
 
 export const payments = sqliteTable("payments",{
     id: int().primaryKey({autoIncrement:true}),
-    token: int().notNull(),
+    token: text().notNull(),
     status: text().notNull(),
     reservations_id: int().notNull(),
     user_id: int().notNull()
+})
+
+export const mockP24Tokens = sqliteTable("mock_p24_tokens",{
+    id: int().primaryKey({autoIncrement:true}),
+    token: text().notNull(),
+    status: int().notNull()
 })

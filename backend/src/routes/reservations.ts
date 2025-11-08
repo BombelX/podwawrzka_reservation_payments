@@ -179,7 +179,7 @@ router.get("/already", async(req,res) =>{
     const monthStartStr = monthStart.toISOString();
     const monthEndStr = monthEnd.toISOString();
     const result = await db
-        .select()
+        .select({start: reservations.start, end: reservations.end})
         .from(reservations)
         .where(
         and(
@@ -187,7 +187,7 @@ router.get("/already", async(req,res) =>{
             gte(reservations.end, monthStartStr)  
         )
         );
-
+    console.log(result);
     return res.json(result);
     
 

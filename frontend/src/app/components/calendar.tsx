@@ -150,10 +150,17 @@ import { start } from "repl";
             const reservations: ApiReservation[] = data;
 
             reservations.forEach(reservation => {
-                const start = new Date(reservation.start)
-                const end = new Date(reservation.end)
-                alert(start)
-                alert(end)
+                const startDate = new Date(reservation.start);
+                startDate.setDate(startDate.getDate() - 1);
+                const endDate = new Date(reservation.end)
+                endDate.setDate(endDate.getDate() - 1);
+
+                let loop = new Date(startDate)
+
+                for (let day = startDate; day <= endDate; day.setDate(day.getDate() + 1)) {
+                    console.log(day)
+
+                }
             })
 
 
@@ -183,6 +190,7 @@ import { start } from "repl";
         selected: boolean = false;
         backGroundColor: string = "bg-white";
         isBeetweenSelected: boolean = false;
+        isDisabled: boolean = false;
         borderColor: string = "border-[#D5EAD8]/30";
         textColor: string = "text-[#2F3B40]";
         constructor(parentMonth: Month,dayNumber: number){
@@ -198,6 +206,9 @@ import { start } from "repl";
             if (dayNumber == today.getDate() && parentMonth.monthNumber == today.getMonth() && parentMonth.parentYear.yearNumber == today.getFullYear()){
                 this.backGroundColor = "bg-[#849831ff]  "
                 this.textColor = "text-white"
+            }
+            if (dayNumber == 5){
+                this.setDisabled(true)
             }
 
             parentMonth.addChild(this);
@@ -227,6 +238,31 @@ import { start } from "repl";
 
             }
         }
+        setDisabled(value: boolean){
+            this.isDisabled = value;
+            if (value){
+                this.borderColor = "border-1.5 border-gray-400/50 btn-disabled"
+                this.backGroundColor = "bg-gray-400"
+                this.textColor = "text-gray-200"
+            }
+            else{
+                this.borderColor = "border-[#D5EAD8]/30"
+                this.backGroundColor = "bg-white"
+                if (this.day == 6 || this.day == 7){
+                    this.textColor = "text-gray-100";
+                    this.backGroundColor = "bg-black/55";
+                }
+                else{
+                    this.textColor = "text-black"
+                }
+                const today: Date = new Date();
+                if (this.dayNumber == today.getDate() && this.parentMonth.monthNumber == today.getMonth() && this.parentMonth.parentYear.yearNumber == today.getFullYear()){
+                    this.backGroundColor = "bg-[#54B435]"
+                }
+            }
+            
+        }
+
         setIsBetweenSelected(value: boolean) {
             this.isBeetweenSelected = value;
             if (value){
@@ -254,7 +290,7 @@ import { start } from "repl";
             const date = new Date(this.parentMonth.parentYear.yearNumber, this.parentMonth.monthNumber , this.dayNumber);
             const dayOfWeek:number = date.getDay() == 0 ? 7 : date.getDay(); 
             if (dayOfWeek == 6 || dayOfWeek == 7){
-                this.backGroundColor = "bg-black/55";
+                this.backGroundColor = "bg-[#144603ff]";
                 this.textColor = "text-gray-300"
             }
             return dayOfWeek
@@ -347,6 +383,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
     const [secondSelectedDate, setSecondSelectedDate] = useState<Day|null>(null);
     const [firstLastHoveredDay, setFirstLastHoveredDay] = useState<Day|null>(null);
     const [secondLastHoveredDay, setSecondLastHoveredDay] = useState<Day|null>(null);
+    const [firstDisabledDate, setFirstDisabledDate] = useState<Day|null>(null);
 
     useEffect(() => {
         setOffsetDays(activeMonth.childrens[0].day );
@@ -377,6 +414,25 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         }
     }
     function handleDayHover(day: Day) {
+        if (day.isDisabled) {
+            console.log("dupa-1")
+            
+            if (firstDisabledDate === null){
+                setFirstDisabledDate(day)  
+                console.log("dupa0")
+
+            }
+            return
+        };
+        if (firstDisabledDate !==null && isDateBefore({day1:day , day2:firstDisabledDate})){
+            setFirstDisabledDate(null)
+            console.log("dupa1")
+
+        }
+        if (firstDisabledDate !== null){
+            console.log("dupa2")
+            return
+        }
         if (firstSelectedDate !== null && secondSelectedDate === null){
             if (isDateBefore({ day1: firstSelectedDate, day2: day })){
                 if (firstLastHoveredDay && secondLastHoveredDay){
@@ -569,26 +625,24 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         }
     }   
 
-
-
     useImperativeHandle(ref, () => {
         return { checkAvaibility: () => activeMonth.fetchDaysAvailable()}
     },[])
     return (
-    <div ref={containerRef} className="w-full max-w-[800px] rounded-2xl bg-[#2F3B40] p-3">
+    <div ref={containerRef} className="w-full max-w-[800px] rounded-2xl bg-[#a1dfb5ff] p-3">
     <div className="flex items-center justify-between gap-4">
       <button onClick={handlePrev}
-        className="btn btn-ghost text-xs rounded-full text-white bg-[#0C1406] border-gray-400/50">
+        className="btn btn-ghost text-xs rounded-full text-white bg-green-600/40 border-green-500/30">
         &larr;
       </button>
 
       <div className="flex flex-col items-center">
-        <div className="badge bg-[#0C1406] text-white">{activeMonth.parentYear.yearNumber}</div>
-        <div className="badge bg-[#0C1406] text-white mt-1">{monthNames[activeMonth.monthNumber]}</div>
+        <div className="badge bg-green-800/50 border-green-800/30 text-white">{activeMonth.parentYear.yearNumber}</div>
+        <div className="badge bg-green-800/50 border-green-800/30 text-white mt-1">{monthNames[activeMonth.monthNumber]}</div>
       </div>
 
       <button onClick={handleNext}
-        className="btn btn-ghost text-xs rounded-full text-white bg-[#0C1406] border-gray-400/50">
+        className="btn btn-ghost text-xs rounded-full text-white bg-green-600/40 border-green-500/30">
         &rarr;
       </button>
     </div>
@@ -604,7 +658,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         <div key={d}
              className={`
                flex mt-2  items-center  justify-center rounded-md
-               bg-black/40 text-white text-sm p-2
+               bg-green-600/40 text-white text-sm p-2
                ${i>=5 ? 'opacity-90' : ''}  
                h-6
              `}
@@ -639,9 +693,11 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
             transition-all
           `}
         >
-          <span className="text-base">{day.dayNumber}</span>
+            <div>
+                <span className="text-base pt-1">{day.dayNumber}</span>
+                <p className="text-[9px] p-0 m-0">123</p>
+            </div>
         </button>
-
       ))}
     </div>
   </div>

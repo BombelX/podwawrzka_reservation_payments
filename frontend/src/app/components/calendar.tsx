@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState,forwardRef,useImperativeHandle, ForwardedRef  } from "react";
 import React from "react";
 import { start } from "repl";
 
@@ -121,12 +121,17 @@ import { start } from "repl";
         10: "Listopad",
         11: "Grudzień"
     }
-
+    
+    interface ApiReservation {
+        start: string;
+        end: string; 
+}
     class Month extends CalendarElement
     {
         parentYear: Year;
         monthNumber: number;
         childrens: Day[] = [];
+        isActive: boolean = false;
         constructor(parentYear: Year ,monthNumber: number){
             super();
             this.parentYear = parentYear;
@@ -134,7 +139,26 @@ import { start } from "repl";
             parentYear.addChild(this);
         }
 
-        isActive: boolean = false;
+        async fetchDaysAvailable (){
+            const url = `http://46.224.13.142:3100/reservations/already?month=${this.monthNumber}&year=${this.parentYear.yearNumber}`
+            const resp = await fetch(url)
+            const data : unknown = await resp.json()
+            if (!Array.isArray(data)){
+                alert("błąd api")
+                return
+            }
+            const reservations: ApiReservation[] = data;
+
+            reservations.forEach(reservation => {
+                const start = new Date(reservation.start)
+                const end = new Date(reservation.end)
+                alert(start)
+                alert(end)
+            })
+
+
+        }
+
         showInfo() {
         }
         disactivate(){
@@ -293,11 +317,15 @@ type CalendarProps = {
   calendarSetter?: (value: CalendarDate) => void;
 };
 
+export interface CalendarHandle {
+  checkAvaibility(): void;
+}
 
 
 
- export default function CalendarComponent({ yearNumber, monthNumber, calendarSetter }: CalendarProps) {
 
+const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber,monthNumber,calendarSetter}, ref) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
     const calendarRef = useRef<Calendar|null>(null);
 
     if (!calendarRef.current){
@@ -541,8 +569,13 @@ type CalendarProps = {
         }
     }   
 
+
+
+    useImperativeHandle(ref, () => {
+        return { checkAvaibility: () => activeMonth.fetchDaysAvailable()}
+    },[])
     return (
-  <div className="w-full max-w-[800px] rounded-2xl bg-[#2F3B40] p-3">
+    <div ref={containerRef} className="w-full max-w-[800px] rounded-2xl bg-[#2F3B40] p-3">
     <div className="flex items-center justify-between gap-4">
       <button onClick={handlePrev}
         className="btn btn-ghost text-xs rounded-full text-white bg-[#0C1406] border-gray-400/50">
@@ -608,11 +641,13 @@ type CalendarProps = {
         >
           <span className="text-base">{day.dayNumber}</span>
         </button>
+
       ))}
     </div>
   </div>
 );
-}
-
-
+});
+    
+    
+export default CalendarComponent;
 

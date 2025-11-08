@@ -1,12 +1,15 @@
 'use client';
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import React from "react";
-import CalendarComponent from "./components/calendar";
+import CalendarComponent, { type CalendarHandle } from "./components/calendar";
 import { randomUUID } from "crypto";
 import { redirect } from "next/dist/server/api-utils";
+import { useRouter } from "next/navigation";
+
 
 export default function Home() {
+  const calendarRef = useRef<CalendarHandle | null>(null);
 
   type CalendarDate = {
     start: {
@@ -30,8 +33,10 @@ export default function Home() {
     email: "test@test.com",
     phone: "123456789"
   });
-
-
+  function callAlert() {
+    calendarRef.current?.checkAvaibility();
+  }
+  
   return (
     <div className="flex p-5 flex-col">
       <div className="font-sans bg-gray-100 flex flex-col  w-full h-full gap-3  items-center justify-items-center min-h-screen">
@@ -148,7 +153,7 @@ export default function Home() {
 
     <div>
     <div className="flex gap-2 mt-13">
-      <CalendarComponent yearNumber={2025} monthNumber={9} calendarSetter={setCalendarSelectedDate} />  
+      <CalendarComponent ref={calendarRef} yearNumber={2025} monthNumber={9} calendarSetter={setCalendarSelectedDate} />  
     </div>
     <div className="flex flex-col gap-1 p-2">
       <h1 className="badge">{CalendarSelectedDate && `Wybrane daty: ${CalendarSelectedDate.start.day}.${CalendarSelectedDate.start.month}.${CalendarSelectedDate.start.year} - ${CalendarSelectedDate.end.day}.${CalendarSelectedDate.end.month}.${CalendarSelectedDate.end.year}`}</h1>
@@ -221,6 +226,10 @@ export default function Home() {
         }} 
           className="btn btn-outline disabled rounded-md bg-white hover:bg-green-600 hover:border-green-600 hover:scale-102 hover:text-white transition-all duration-500 text-black">
           Zarezerwuj i przejdź do płatności
+        </button>
+        <button onClick={callAlert} 
+        className="btn rounded-xl">
+            Pobierz dane o rezerwacjach
         </button>
         <div role="alert" className={`alert alert-success ${isPurchaseConfirmed}`}>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">

@@ -1,6 +1,10 @@
 {
   "dependencies": {
+    "@types/react-router": "^5.1.20",
+    "@types/react-router-dom": "^5.3.3",
     "cally": "^0.8.0",
-    "daisyui": "^5.3.7"
+    "daisyui": "^5.3.7",
+    "react-router": "^7.9.5",
+    "react-router-dom": "^7.9.5"
   }
 }

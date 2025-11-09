@@ -139,6 +139,7 @@ import { start } from "repl";
             parentYear.addChild(this);
         }
 
+
         async fetchDaysAvailable (){
             const url = `http://46.224.13.142:3100/reservations/already?month=${this.monthNumber}&year=${this.parentYear.yearNumber}`
             const resp = await fetch(url)
@@ -151,15 +152,19 @@ import { start } from "repl";
 
             reservations.forEach(reservation => {
                 const startDate = new Date(reservation.start);
-                startDate.setDate(startDate.getDate() - 1);
+                // startDate.setDate(startDate.getDate() - 1);
                 const endDate = new Date(reservation.end)
-                endDate.setDate(endDate.getDate() - 1);
-
+                // endDate.setDate(endDate.getDate() - 1);
+                console.log(startDate)
+                console.log(endDate)
                 let loop = new Date(startDate)
-
                 for (let day = startDate; day <= endDate; day.setDate(day.getDate() + 1)) {
-                    console.log(day)
-
+                    if (day.getMonth() == this.monthNumber && day.getFullYear() == this.parentYear.yearNumber){
+                        const dayToDisable = this.childrens.find((c) => c.dayNumber === day.getDate());
+                        console.log(day)
+                        console.log(dayToDisable)
+                        dayToDisable?.setDisabled(true)
+                    } 
                 }
             })
 
@@ -173,6 +178,7 @@ import { start } from "repl";
         }
         activate(){
             this.parentYear.activate();
+            this.fetchDaysAvailable()
             const nowActive = this.parentYear.childrens.find(m => m.isActive);
             if (nowActive && nowActive !== this) {
                 nowActive.disactivate();
@@ -188,6 +194,7 @@ import { start } from "repl";
         parentMonth: Month;
         day: number ;
         selected: boolean = false;
+        hovers: string = "hover:bg-[#379237] hover:text-white"
         backGroundColor: string = "bg-white";
         isBeetweenSelected: boolean = false;
         isDisabled: boolean = false;
@@ -241,7 +248,8 @@ import { start } from "repl";
         setDisabled(value: boolean){
             this.isDisabled = value;
             if (value){
-                this.borderColor = "border-1.5 border-gray-400/50 btn-disabled"
+                this.borderColor = "border-1.5 border-gray-400/50"
+                this.hovers = ""
                 this.backGroundColor = "bg-gray-400"
                 this.textColor = "text-gray-200"
             }
@@ -415,22 +423,16 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
     }
     function handleDayHover(day: Day) {
         if (day.isDisabled) {
-            console.log("dupa-1")
-            
             if (firstDisabledDate === null){
                 setFirstDisabledDate(day)  
-                console.log("dupa0")
 
             }
             return
         };
         if (firstDisabledDate !==null && isDateBefore({day1:day , day2:firstDisabledDate})){
             setFirstDisabledDate(null)
-            console.log("dupa1")
-
         }
         if (firstDisabledDate !== null){
-            console.log("dupa2")
             return
         }
         if (firstSelectedDate !== null && secondSelectedDate === null){
@@ -495,6 +497,10 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
                     const targetYear = calendar.childrens.find((y) => y.yearNumber == year);
                     const targetMonth =  targetYear?.childrens.find((m) => m.monthNumber == month);
                     const targetDay = targetMonth?.childrens.find((d)=> d.dayNumber  == day)
+                    if (targetDay?.isDisabled && activate){
+                        setFirstDisabledDate(targetDay)
+                        return
+                    }
                     if (targetDay){
                         targetDay.setIsBetweenSelected(activate)
                     }                  
@@ -530,6 +536,9 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         
     }
     function handleDayClick(day: Day) {
+        if (day.isDisabled) {return}
+        if (firstDisabledDate !== null && isDateBefore({day1:firstDisabledDate,day2:day})){return}
+        console.log("dupa")
         if (firstSelectedDate !== null) {
             if (firstSelectedDate == day){
                 setFirstSelectedDate(null) // reset if clicked on same date
@@ -687,8 +696,10 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
             aspect-square w-full
             flex items-center justify-center
             rounded-xl border
+            ${day.hovers}
+            
             ${day.backGroundColor} ${day.textColor} ${day.borderColor}
-            hover:bg-[#379237] hover:text-white
+            
             focus:outline-none focus:ring-2 focus:ring-[#54B435] focus:ring-offset-2 focus:ring-offset-[#2F3B40]
             transition-all
           `}

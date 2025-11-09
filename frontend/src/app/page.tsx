@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import React from "react";
 import CalendarComponent, { type CalendarHandle } from "./components/calendar";
@@ -26,6 +26,7 @@ export default function Home() {
   }
   const [CalendarSelectedDate,setCalendarSelectedDate] = useState<CalendarDate|null>(null);
   const [guestNumber, setGuestNumber] = useState<number>(2);
+  const [price, setPrice] = useState<number>(0);
   const [isPurchaseConfirmed, setIsPurchaseConfirmed] = useState<string>("hidden");
   const [contactData, setContactData] = useState({
     name: "test",
@@ -36,6 +37,12 @@ export default function Home() {
   function callAlert() {
     calendarRef.current?.checkAvaibility();
   }
+
+  useEffect(()=>{
+    if (CalendarSelectedDate !== null ){
+      setPrice(guestNumber * 20 * CalendarSelectedDate.nights + CalendarSelectedDate.nights * 700)
+    }
+  },[guestNumber,CalendarSelectedDate])
   
   return (
     <div className="flex p-5 flex-col">
@@ -158,7 +165,7 @@ export default function Home() {
     <div className="flex flex-col gap-1 p-2">
       <h1 className="badge">{CalendarSelectedDate && `Wybrane daty: ${CalendarSelectedDate.start.day}.${CalendarSelectedDate.start.month}.${CalendarSelectedDate.start.year} - ${CalendarSelectedDate.end.day}.${CalendarSelectedDate.end.month}.${CalendarSelectedDate.end.year}`}</h1>
       <h1 className="badge">{CalendarSelectedDate && `Liczba nocy: ${CalendarSelectedDate.nights}`}</h1>
-      <h1 className="badge">{CalendarSelectedDate && `Kwota do zapłaty: ${guestNumber * 20 * CalendarSelectedDate.nights + CalendarSelectedDate.nights * 700} zł`}</h1>
+      <h1 className="badge">{CalendarSelectedDate && `Kwota do zapłaty: ${price} zł`}</h1>
     </div>
     </div>
     </div>

@@ -152,9 +152,7 @@ import { start } from "repl";
 
             reservations.forEach(reservation => {
                 const startDate = new Date(reservation.start);
-                // startDate.setDate(startDate.getDate() - 1);
                 const endDate = new Date(reservation.end)
-                // endDate.setDate(endDate.getDate() - 1);
                 console.log(startDate)
                 console.log(endDate)
                 let loop = new Date(startDate)
@@ -178,12 +176,12 @@ import { start } from "repl";
         }
         activate(){
             this.parentYear.activate();
-            this.fetchDaysAvailable()
             const nowActive = this.parentYear.childrens.find(m => m.isActive);
             if (nowActive && nowActive !== this) {
                 nowActive.disactivate();
             }
             this.isActive = true;
+            this.fetchDaysAvailable()
         }
 
     }
@@ -195,6 +193,7 @@ import { start } from "repl";
         day: number ;
         selected: boolean = false;
         hovers: string = "hover:bg-[#379237] hover:text-white"
+        style :string = ""
         backGroundColor: string = "bg-white";
         isBeetweenSelected: boolean = false;
         isDisabled: boolean = false;
@@ -226,8 +225,10 @@ import { start } from "repl";
                 this.borderColor = "border-2 border-[#379237]"
                 this.backGroundColor = "bg-[#4ea540ff] "
                 this.textColor = "text-[#0C1406]"
+                this.style = "outline-none ring-2 ring-[#54B435] ring-offset-2 ring-offset-[#2F3B40]"
             }
             else{
+                this.style = ""
                 this.borderColor = "border-[#D5EAD8]/30"
                 this.backGroundColor = "bg-white"
                 if (this.day == 6 || this.day == 7){
@@ -241,6 +242,9 @@ import { start } from "repl";
                 if (this.dayNumber == today.getDate() && this.parentMonth.monthNumber == today.getMonth() && this.parentMonth.parentYear.yearNumber == today.getFullYear()){
                     this.backGroundColor = "bg-[#54B435]"
                     this.textColor = "text-white"
+                }
+                if (this.isDisabled){
+                    this.setDisabled(true)
                 }
 
             }
@@ -292,6 +296,9 @@ import { start } from "repl";
                 if (this.dayNumber == today.getDate() && this.parentMonth.monthNumber == today.getMonth() && this.parentMonth.parentYear.yearNumber == today.getFullYear()){
                     this.backGroundColor = "bg-[#54B435]"
                 }
+                if (this.isDisabled){
+                    this.setDisabled(true)
+                }
             }
         }
         calcDayOfWeek(): number {
@@ -302,6 +309,7 @@ import { start } from "repl";
                 this.textColor = "text-gray-300"
             }
             return dayOfWeek
+            
         }
         displayed: boolean = false;
          showInfo() {
@@ -638,20 +646,20 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         return { checkAvaibility: () => activeMonth.fetchDaysAvailable()}
     },[])
     return (
-    <div ref={containerRef} className="w-full max-w-[800px] rounded-2xl bg-[#a1dfb5ff] p-3">
+    <div ref={containerRef} className="w-full max-w-[800px] rounded-2xl bg-[#85c399] p-3">
     <div className="flex items-center justify-between gap-4">
       <button onClick={handlePrev}
-        className="btn btn-ghost text-xs rounded-full text-white bg-green-600/40 border-green-500/30">
+        className="btn btn-ghost text-xs rounded-full text-white bg-[#152519]/40 border-green-500/30">
         &larr;
       </button>
 
       <div className="flex flex-col items-center">
-        <div className="badge bg-green-800/50 border-green-800/30 text-white">{activeMonth.parentYear.yearNumber}</div>
-        <div className="badge bg-green-800/50 border-green-800/30 text-white mt-1">{monthNames[activeMonth.monthNumber]}</div>
+        <div className="badge bg-[#06650e] border-green-800/30 text-white">{activeMonth.parentYear.yearNumber}</div>
+        <div className="badge bg-[#06650e] border-green-800/30 text-white mt-1">{monthNames[activeMonth.monthNumber]}</div>
       </div>
 
       <button onClick={handleNext}
-        className="btn btn-ghost text-xs rounded-full text-white bg-green-600/40 border-green-500/30">
+        className="btn btn-ghost text-xs rounded-full text-white bg-[#152519]/40 border-green-500/30">
         &rarr;
       </button>
     </div>
@@ -667,7 +675,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         <div key={d}
              className={`
                flex mt-2  items-center  justify-center rounded-md
-               bg-green-600/40 text-white text-sm p-2
+               bg-[#152519]/40 text-white text-sm p-2
                ${i>=5 ? 'opacity-90' : ''}  
                h-6
              `}
@@ -696,11 +704,11 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
             aspect-square w-full
             flex items-center justify-center
             rounded-xl border
-            ${day.hovers}
-            
+            ${day.hovers} 
+            ${day.style} 
             ${day.backGroundColor} ${day.textColor} ${day.borderColor}
             
-            focus:outline-none focus:ring-2 focus:ring-[#54B435] focus:ring-offset-2 focus:ring-offset-[#2F3B40]
+            
             transition-all
           `}
         >

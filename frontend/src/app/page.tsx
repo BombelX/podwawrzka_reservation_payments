@@ -3,9 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import React from "react";
 import CalendarComponent, { type CalendarHandle } from "./components/calendar";
-import { randomUUID } from "crypto";
 import { redirect } from "next/dist/server/api-utils";
 import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from 'uuid';
+import {Router} from 'next/router';
+
+
+
+
+
+
 
 
 export default function Home() {
@@ -160,7 +167,7 @@ export default function Home() {
 
     <div>
     <div className="flex gap-2 mt-13">
-      <CalendarComponent ref={calendarRef} yearNumber={2025} monthNumber={9} calendarSetter={setCalendarSelectedDate} />  
+      <CalendarComponent ref={calendarRef} yearNumber={2025} monthNumber={9} calendarSetter={setCalendarSelectedDate} people={guestNumber}/>  
     </div>
     <div className="flex flex-col gap-1 p-2">
       <h1 className="badge">{CalendarSelectedDate && `Wybrane daty: ${CalendarSelectedDate.start.day}.${CalendarSelectedDate.start.month}.${CalendarSelectedDate.start.year} - ${CalendarSelectedDate.end.day}.${CalendarSelectedDate.end.month}.${CalendarSelectedDate.end.year}`}</h1>
@@ -182,15 +189,15 @@ export default function Home() {
                 "Content-Type":"application/json",
               },
               body: JSON.stringify({
-                start:"",
-                end:"",
-                guestName:"",
-                guestSurname:"",
-                guestEmail:"",
+                start: CalendarSelectedDate.start,
+                end: CalendarSelectedDate.end,
+                guestName: contactData.name,
+                guestSurname:contactData.surname,
+                guestEmail:contactData.email,
                 arrivalTime:"",
-                nights: 0,
-                price: 222,
-                how_many_people: 2
+                nights: CalendarSelectedDate.nights,
+                price: price,
+                how_many_people: guestNumber
               })
           }
 
@@ -204,8 +211,8 @@ export default function Home() {
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              sid: crypto.randomUUID(),
-              amount: 10000,
+              sid: uuidv4(),
+              amount: price*100,
               email: contactData.email,
               name: contactData.name,
               surname: contactData.surname,

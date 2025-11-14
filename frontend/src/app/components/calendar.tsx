@@ -12,8 +12,16 @@ import { start } from "repl";
 
     class CalendarElement implements ICalendarInterface {
         childrens: CalendarElement[] = [];
+        protected rerender?: () => void;
+        setRerender(r: () => void) {
+            this.rerender = r;
+            this.childrens.forEach(c => c.setRerender(r));
+        }
         addChild(child: CalendarElement) {
             this.childrens.push(child);
+            if (this.rerender) {
+                child.setRerender(this.rerender);
+        }
         }
         showInfo() {
             console.log("Generic calendar element");
@@ -94,7 +102,6 @@ import { start } from "repl";
 
 
 
-
     const daysInMonth: Record<number, number> = {
         0:31,
         1:28,
@@ -157,18 +164,15 @@ import { start } from "repl";
             reservations.forEach(reservation => {
                 const startDate = new Date(reservation.start);
                 const endDate = new Date(reservation.end)
-                console.log(startDate)
-                console.log(endDate)
                 let loop = new Date(startDate)
                 for (let day = startDate; day <= endDate; day.setDate(day.getDate() + 1)) {
                     if (day.getMonth() == this.monthNumber && day.getFullYear() == this.parentYear.yearNumber){
                         const dayToDisable = this.childrens.find((c) => c.dayNumber === day.getDate());
-                        console.log(day)
-                        console.log(dayToDisable)
                         dayToDisable?.setDisabled(true)
                     } 
                 }
             })
+            this.rerender && this.rerender();
 
 
         }
@@ -385,7 +389,8 @@ function generateYear (calendar: Calendar, yearNumber: number): Year {
 type CalendarProps = {
   yearNumber?: number;
   monthNumber?: number;
-  calendarSetter?: (value: CalendarDate) => void;
+  calendarSetter?: (value: CalendarDate|null) => void;
+    people?: number;
 };
 
 export interface CalendarHandle {
@@ -395,16 +400,18 @@ export interface CalendarHandle {
 
 
 
-const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber,monthNumber,calendarSetter}, ref) => {
+const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber,monthNumber,calendarSetter,people=1}, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const calendarRef = useRef<Calendar|null>(null);
-
+    const [tick, setTick] = useState(0);
+    const forceRerender = () => setTick(v => v + 1);
     if (!calendarRef.current){
         const cal = new Calendar();
         const year = generateYear(cal,yearNumber ?? new Date().getFullYear());
         const month = year.childrens[(monthNumber ?? new Date().getMonth())];
         year.activate();
         month.activate();
+        cal.setRerender(forceRerender);
         calendarRef.current = cal;
 
     }
@@ -448,17 +455,17 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         }
     }
     function handleDayHover(day: Day) {
+        
         if (day.isDisabled) {
-            if (firstDisabledDate === null){
+            if (firstDisabledDate === null && firstSelectedDate !== null && secondSelectedDate === null && isDateBefore({day1:firstSelectedDate , day2: day})){
                 setFirstDisabledDate(day)  
-
             }
             return
         };
         if (firstDisabledDate !==null && isDateBefore({day1:day , day2:firstDisabledDate})){
             setFirstDisabledDate(null)
         }
-        if (firstDisabledDate !== null){
+        if (firstDisabledDate !== null || secondSelectedDate !== null){
             return
         }
         if (firstSelectedDate !== null && secondSelectedDate === null){
@@ -511,8 +518,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         }
     }
 
-    function iterateBeetweenDatesYMD(date1:YMD,date2:YMD,activate:boolean):void{
-
+    function iterateBeetweenDatesYMD(date1:YMD,date2:YMD,activate:boolean):boolean{
         for (let year : number = date1.y ; year <= date2.y; year++){
             const startMonth : number  = (year == date1.y) ? date1.m : 0;
             const endMonth: number = (year == date2.y) ? date2.m : 11;
@@ -525,7 +531,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
                     const targetDay = targetMonth?.childrens.find((d)=> d.dayNumber  == day)
                     if (targetDay?.isDisabled && activate){
                         setFirstDisabledDate(targetDay)
-                        return
+                        return false;
                     }
                     if (targetDay){
                         targetDay.setIsBetweenSelected(activate)
@@ -533,6 +539,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
                 }
             }
         }
+        return true;
 
 
     }
@@ -545,7 +552,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         return diffDays;
     }
 
-    function beetweenSelected(day1: Day|null, day2: Day|null, oldDay1: Day|null, oldDay2: Day|null): void{
+    function beetweenSelected(day1: Day|null, day2: Day|null, oldDay1: Day|null, oldDay2: Day|null): boolean {
         if (oldDay1 && oldDay2){
             const oldDay1YMD: YMD = dayToYMD(oldDay1)
             const oldDay2YMD: YMD = dayToYMD(oldDay2)
@@ -554,61 +561,108 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         if (day1 && day2){
             const day1YMD: YMD = dayToYMD(day1)
             const day2YMD: YMD = dayToYMD(day2)
-            iterateBeetweenDatesYMD(day1YMD,day2YMD,true);
+            const noDisabled = iterateBeetweenDatesYMD(day1YMD,day2YMD,true);
             day1.setSelected(true);
-            day2.setSelected(true);
+            if (noDisabled){
+                day2.setSelected(true);
+                return true;
+            }
+            return false;
         }
+        return true;
 
         
     }
     function handleDayClick(day: Day) {
         if (day.isDisabled) {return}
-        if (firstDisabledDate !== null && isDateBefore({day1:firstDisabledDate,day2:day})){return}
-        console.log("dupa")
+        if (firstSelectedDate !== null && firstDisabledDate !== null && isDateBefore({day1:firstDisabledDate,day2:day})){
+            if (secondSelectedDate !== null){
+                secondSelectedDate.setSelected(false);
+                beetweenSelected(null, null, firstSelectedDate, secondSelectedDate);
+                setSecondSelectedDate(null);
+            firstSelectedDate.setSelected(false);
+            setFirstSelectedDate(day);
+            day.setSelected(true);
+            setFirstDisabledDate(null);
+            if (calendarSetter) {
+                calendarSetter(null)
+            }
+            return;
+        }
+        }
         if (firstSelectedDate !== null) {
             if (firstSelectedDate == day){
                 setFirstSelectedDate(null) // reset if clicked on same date
                 day.setSelected(false);
-
                 if (secondSelectedDate !== null){
                     secondSelectedDate.setSelected(false);
                     beetweenSelected(firstSelectedDate, day, firstSelectedDate, secondSelectedDate);
                     setSecondSelectedDate(null);
                 }
                 day.setSelected(false);
+                setFirstDisabledDate(null);
+                if (calendarSetter) {
+                calendarSetter(null)
+                }
                 return;
             }
             else{
                 if (isDateBefore({ day1: firstSelectedDate, day2: day })){
+                    const oldSecondSelectedDate = secondSelectedDate;
                     if (secondSelectedDate !== null){
                         secondSelectedDate.setSelected(false);
                     }
-                    beetweenSelected(firstSelectedDate, day, firstSelectedDate, secondSelectedDate!);
-                    setSecondSelectedDate(day);
-                    day.setSelected(true);
-                    const start: YMD = dayToYMD(firstSelectedDate);
-                    const end: YMD = dayToYMD(day);
-                    if (calendarSetter) {
-                    calendarSetter({
-                        start: {
-                            year: start.y,
-                            month: start.m,
-                            day: start.d
-                        },
-                        end: {
-                            year: end.y,
-                            month: end.m,
-                            day: end.d
-                        },
-                        nights: DateDifferenceInNights(start, end)
-                    })
-                }
-                }
+                    const succes = beetweenSelected(firstSelectedDate, day, firstSelectedDate, secondSelectedDate!);
+                    if (succes){
+                        setSecondSelectedDate(day);
+                        const start: YMD = dayToYMD(firstSelectedDate);
+                        const end: YMD = dayToYMD(day);
+                        if (calendarSetter) {
+                            calendarSetter({
+                                start: {
+                                    year: start.y,
+                                    month: start.m,
+                                    day: start.d
+                                },
+                                end: {
+                                    year: end.y,
+                                    month: end.m,
+                                    day: end.d
+                                },
+                                nights: DateDifferenceInNights(start, end)
+                                // price calculation will be added here
+                            })
+                        }
+                        }
+                    else{
+
+                        // if (oldSecondSelectedDate !== null){
+                        //     oldSecondSelectedDate.setSelected(true);
+                        //     beetweenSelected(firstSelectedDate, oldSecondSelectedDate, firstSelectedDate, day);
+                        // }
+                        if (oldSecondSelectedDate !== null){
+                            beetweenSelected(null, null, firstSelectedDate, day);
+                        }
+                        setSecondSelectedDate(null);
+                        firstSelectedDate.setSelected(false);
+                        setFirstSelectedDate(day);
+                        setFirstDisabledDate(null);
+                        day.setSelected(true);
+                        }
+                    }
                 else{
+                    console.log("dupa")
                     firstSelectedDate.setSelected(false);
+                    if (secondSelectedDate !== null){
+                        secondSelectedDate.setSelected(false);
+                        setSecondSelectedDate(null);
+                    }
                     beetweenSelected(null, null, firstSelectedDate, secondSelectedDate);
                     setFirstSelectedDate(day);
                     day.setSelected(true);
+                    if (calendarSetter) {
+                        calendarSetter(null)
+                    }
                 }
             }
         }
@@ -702,9 +756,6 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         </div>
       ))}
 
-      {/* {Array.from({ length: Math.max(0, offsetDays - 1) }).map((_, i) => (
-        <div key={`pad-${i}`} aria-hidden className="h-12" />
-      ))} */}
       {Array.from({ length: Math.max(0, offsetDays - 1) }).map((_, i) => (
        <div
          key={`pad-${i}`}
@@ -732,7 +783,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         >
             <div>
                 <span className="text-base pt-1">{day.dayNumber}</span>
-                <p className="text-[9px] p-0 m-0">{day.price}</p>
+                <p className="text-[9px] p-0 m-0">{day.price+(people-1)*20}</p>
             </div>
         </button>
       ))}

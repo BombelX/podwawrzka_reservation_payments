@@ -254,8 +254,8 @@ router.post("/begin", async (req, res) => {
         "country": "PL",
         "phone": String(data.phone),
         "language": "pl",
-        "urlReturn": `https://podwawrzka.pl/${sessionId}`,
-        "urlStatus": `https://podwawrzka.pl/payments/status/change/${sessionId}`,
+        "urlReturn": `http://46.224.13.142:3000/paymentStatus/${sessionId}`,
+        "urlStatus": `http://46.224.13.142:/payments/status/change/${sessionId}`,
         "sign": hash,
       }),
     });

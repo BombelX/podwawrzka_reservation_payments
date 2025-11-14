@@ -91,6 +91,10 @@ import { start } from "repl";
         }
 
     }
+
+
+
+
     const daysInMonth: Record<number, number> = {
         0:31,
         1:28,
@@ -188,6 +192,18 @@ import { start } from "repl";
 
     class Day extends CalendarElement
     {
+        fixedHolidays = [
+        '1-1', // Nowy Rok
+        '1-6', // Trzech Króli
+        '5-1', // Święto Pracy
+        '5-3', // Święto Konstytucji 3 Maja
+        '8-15', // Wniebowzięcie NMP
+        '11-1', // Wszystkich Świętych
+        '11-11', // Święto Niepodległości
+        '12-25', // Boże Narodzenie (pierwszy dzień)
+        '12-26', // Boże Narodzenie (drugi dzień)
+        ];
+        price : number = 600;
         dayNumber: number;
         parentMonth: Month;
         day: number ;
@@ -205,7 +221,7 @@ import { start } from "repl";
             this.dayNumber = dayNumber;
             this.day = this.calcDayOfWeek();
             if (this.day == 6 || this.day == 7){
-
+                this.price +=100;
                 this.textColor = "text-gray-100";
             }
             const today: Date = new Date();
@@ -215,6 +231,9 @@ import { start } from "repl";
             }
             if (dayNumber == 5){
                 this.setDisabled(true)
+            }
+            if (this.fixedHolidays.includes(`${this.parentMonth.monthNumber+1}-${dayNumber}`)){
+                this.price+=50
             }
 
             parentMonth.addChild(this);
@@ -391,7 +410,6 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
     }
 
     const calendar = calendarRef.current!;
-
 
     const [activeMonth, setActiveMonth] = useState<Month>(calendar.getActiveMonth())
     const [offsetDays, setOffsetDays] = useState<number>(activeMonth.childrens[0].day);
@@ -714,7 +732,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(({yearNumber
         >
             <div>
                 <span className="text-base pt-1">{day.dayNumber}</span>
-                <p className="text-[9px] p-0 m-0">123</p>
+                <p className="text-[9px] p-0 m-0">{day.price}</p>
             </div>
         </button>
       ))}

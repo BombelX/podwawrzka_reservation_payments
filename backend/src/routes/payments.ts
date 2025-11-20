@@ -9,12 +9,18 @@ import { parse } from "path";
 import { error } from "console";
 import winston, { child } from "winston"
 import { replace } from "react-router";
-
+import { id } from "zod/v4/locales";
+import { sha384_hex } from "zod/v4/core/regexes.cjs";
+import { stat } from "fs";
+const { combine, timestamp, errors, json } = winston.format;
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
-  format: winston.format.json(),
-  transports: [new winston.transports.Console()],
-  defaultMeta: {service: "payments-route"}
+  format: combine(timestamp(),errors({ stack: true }), json()),
+  transports: [new winston.transports.File({filename: 'logs/payments.log'}), new winston.transports.Console()],
+  defaultMeta: {service: "payments-route"},
+  exceptionHandlers:[
+    new winston.transports.File({filename: "logs/exeptions.log"})
+  ]
 });
 
 const router = Router();
@@ -121,7 +127,13 @@ const paymentStatusMap = new Map<statusCodes,statusNames>(
 )
 const statusCheck = z.object(
   {
-    sid : z.coerce.string() 
+    merchantId: z.coerce.number(),
+    posId: z.coerce.number(),
+    sessionId: z.coerce.string(),
+    amount: z.coerce.number(),
+    currency: z.coerce.string(),
+    orderId: z.coerce.number(),
+    sign: z.coerce.string()
   }
 )
 
@@ -130,96 +142,107 @@ function  isStatusCode(val: number): val is statusCodes{
 }
 
 
-router.post("/status", async (req, res) => {
-  
-  const parsed = statusCheck.safeParse(req.body)
 
-  if (!parsed.success){
-    logger.error("Wrong type of sid or not sid")
+
+
+router.post("/status", async (req, res) => {
+  const parsed = statusCheck.safeParse(req.body);
+  if (!parsed.success) {
+    logger.error("Wrong body from P24");
     return res.status(400).json({
-      error: "Wrong type of sid or not sid"
-    
-    })
+      error: "Wrong body from P24",
+    });
   }
-  const sid = parsed.data.sid;
-  const payStatuslogger = logger.child(
-    {sid: sid}
-  );
+
+  console.log("recived body:", parsed.data);
+
+  const sid = parsed.data.sessionId;
+  const payStatuslogger = logger.child({ sid });
+
   const P24_POS_ID = (process.env.P24_POS_ID ?? "").trim();
   const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
-  const baseUrl =  "https://sandbox.przelewy24.pl";
-  let resp;
+  const P24_CRC = (process.env.P24_CRC ?? "").trim();
+  const baseUrl = "https://sandbox.przelewy24.pl";
+
   const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
-  try{
-    resp = await db.select({price: reservations.price}).from(payments).innerJoin(reservations,eq(reservations.id,payments.reservations_id)).where(eq(payments.token,sid))
-  }
-  catch{
-    payStatuslogger.error("db fatal error")
-  }
-  let price = 0;
-  if (resp && resp.length>0){
-    const price = resp[0]
-  }
-  else{
-    payStatuslogger.error("DB error")
-    return res.status(402)
-  }
-  payStatuslogger.info("sending a request to p24")
 
-  const p24response = await fetch(baseUrl + "/api/v1/transaction/verify",
-    {
-      method: "POST",
-      redirect: "manual",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        "merchantId": P24_POS_ID,
-        "posId": P24_POS_ID,
-        "sessionId": sid,
-        "amount": price,
-        "currency": "PLN",
-        "orderId": 0,
-        "sign": "string"
-      })
-    }
-  )
-  // zastapic na zapytanie do p24
-  const statusData = await db.select({ status: mockP24Tokens.status }).from(mockP24Tokens).where(eq(mockP24Tokens.token, parsed.data.sid))
-  if (statusData.length > 0){
-    const status = Number(statusData[0].status)
-    if (isStatusCode(status) || !Number.isFinite(status)){
-      
-    if (!paymentStatusMap.has(status as statusCodes)) {
-      return res.status(500).json({
-        error: "Status map missing entry",
-        code: status,
-      });
-    }
-    const statusName  = paymentStatusMap.get(status as statusCodes)!
-      const updateRes = await db.update(payments).set({status : statusName}).where(eq(payments.token,parsed.data.sid!))
-      return res.status(200).json({
-        status : status
-      })
-    }
-    return res.status(422).json({
-    error: `Wrong status , sync issue with p24 codes`,
-    sid: parsed.data.sid
-  })
+  // Używaj dokładnie tych samych wartości, które przyszły z notyfikacji
+  const amount: number = Number(parsed.data.amount);
+  const orderId: number = Number(parsed.data.orderId);
+  const currency: string = parsed.data.currency; // nie hard-coduj "PLN" na wszelki wypadek
 
+  payStatuslogger.info("sending a request to p24");
 
-  } 
-  return res.status(404).json({
-    error: `Wrong sid , this sid didn't exist in our db`,
-    sid: parsed.data.sid
-  })
-})
+  const signParams = {
+    sessionId: sid,
+    orderId,
+    amount,
+    currency,
+    crc: P24_CRC,
+  };
+
+  const hash = crypto
+    .createHash("sha384")
+    .update(JSON.stringify(signParams))
+    .digest("hex");
+
+  console.log("LOCAL HASH (verify sign):", hash);
+
+  const p24response = await fetch(baseUrl + "/api/v1/transaction/verify", {
+    method: "PUT",
+    redirect: "manual",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      merchantId: P24_POS_ID,
+      posId: P24_POS_ID,
+      sessionId: sid,
+      amount,
+      currency,
+      orderId,
+      sign: hash,
+    }),
+  });
+
+  console.log("P24 RESPONSE STATUS:", p24response.status);
+  const rawResp = await p24response.text();
+  console.log("P24 RAW RESPONSE:", rawResp);
+
+  if (!p24response.ok) {
+    payStatuslogger.error(
+      "P24 verify failed",
+      { status: p24response.status, rawResp },
+    );
+    return res
+      .status(502)
+      .json({ error: "P24 verify failed", status: p24response.status, rawResp });
+  }
+
+  let payload: any;
+  try {
+    payload = rawResp ? JSON.parse(rawResp) : null;
+  } catch {
+    payload = { rawResp };
+  }
+
+  const status = payload?.data?.status ?? "";
+  if (status !== "") {
+    await db
+      .update(payments)
+      .set({ status }) // poprawka: musi być obiekt
+      .where(eq(payments.token, sid));
+  }
+
+  return res.status(200).json({ status });
+});
+
 
 const PaymentStatus = z.object(
   {
-    token : z.coerce.string()
+    sid : z.coerce.string()
   }
 
 )
@@ -233,8 +256,10 @@ router.post("/checkpayment", async (req, res) => {
     })
   }
 
-  const sid = parsed.data.token
+  const sid = parsed.data.sid
+  console.log("Checking payment status for SID:", sid);
   let result;
+  console.log(await db.select().from(payments).where(eq(payments.token, sid)));
   try{
     result = await db.select({ status: payments.status }).from(payments).where(eq(payments.token, sid))
   }
@@ -244,7 +269,7 @@ router.post("/checkpayment", async (req, res) => {
       errDescription : "Database connection cannot be established , try again later"
     })
   }
-  if (result && result.length>0){
+  if (result[0]){
     const status = result[0].status
     return res.status(200).json({ paymentStatus: status })
     }
@@ -323,14 +348,11 @@ router.post("/begin", async (req, res) => {
     currency: "PLN", // Tutaj należy umieścić walutę transakcji
     crc: String(P24_CRC) // Tutaj należy umieścić pobrany klucz CRC z panelu Przelewy24
   };
-  // Sklejanie parametrów w ciąg
   const combinedString = JSON.stringify(params);
   const hash = crypto.createHash('sha384').update(combinedString).digest('hex');
   console.log('Suma kontrolna parametrów wynosi:', hash);
   const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
   try {
-
-    mockresponse()
     const response = await fetch(`${baseUrl}/api/v1/transaction/register`, {
       method: "POST",
       redirect: "manual",
@@ -352,7 +374,7 @@ router.post("/begin", async (req, res) => {
         "phone": String(data.phone),
         "language": "pl",
         "urlReturn": `http://46.224.13.142:3000/paymentStatus/${sessionId}`,
-        "urlStatus": `http://46.224.13.142:/payments/status/change/${sessionId}`,
+        "urlStatus": `http://46.224.13.142:3100/payments/status`,
         "sign": hash,
       }),
     });
@@ -360,8 +382,7 @@ router.post("/begin", async (req, res) => {
     const raw = await response.text();
     let payload: any;
     try { payload = raw ? JSON.parse(raw) : null; } catch { payload = { raw }; }
-
-    console.log("STATUS:", response.status, response.statusText);
+    console.log("P24 REGISTER RESPONSE:", payload);
     if (!response.ok) {
       return res.status(response.status).json({
         error: "P24 register failed",
@@ -369,13 +390,22 @@ router.post("/begin", async (req, res) => {
       });
     }
 
-    const token = payload?.data?.token ?? payload?.token;
-    if (!token) {
+    const p24token = payload?.data?.token ?? payload?.token;
+    
+    try{
+      db.transaction((tx) => {
+        tx.update(payments).set({p24_token : p24token}).where(eq(payments.token, sessionId)).run()
+      })
+    } catch (e: any) {
+      return res.status(500).json({ error: "DB transaction failed", details: e?.message });
+    }
+
+    if (!p24token) {
       return res.status(502).json({ error: "Brak tokenu w odpowiedzi P24", details: payload });
     }
 
     const redirectBase =  "https://sandbox.przelewy24.pl";
-    return res.json({ url: `${redirectBase}/trnRequest/${token}` });
+    return res.json({ url: `${redirectBase}/trnRequest/${p24token}` });
 
   } catch (e: any) {
     return res.status(500).json({ error: "P24 register request failed", details: e?.message });

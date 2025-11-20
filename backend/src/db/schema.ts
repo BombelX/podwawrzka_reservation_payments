@@ -27,7 +27,8 @@ export const payments = sqliteTable("payments",{
     token: text().notNull(),
     status: text().notNull(),
     reservations_id: int().notNull(),
-    user_id: int().notNull()
+    user_id: int().notNull(),
+    p24_token: text()
 })
 
 export const mockP24Tokens = sqliteTable("mock_p24_tokens",{

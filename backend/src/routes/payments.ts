@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { response, Router } from "express";
 import { z } from "zod";
 import { db } from "../db/client";
 import { mockP24Tokens, payments, reservations, users } from "../db/schema";
@@ -6,6 +6,16 @@ import * as crypto from "crypto";
 import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
 import { string } from "zod/v4/classic/coerce.cjs";
 import { parse } from "path";
+import { error } from "console";
+import winston, { child } from "winston"
+import { replace } from "react-router";
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || "info",
+  format: winston.format.json(),
+  transports: [new winston.transports.Console()],
+  defaultMeta: {service: "payments-route"}
+});
 
 const router = Router();
 
@@ -121,12 +131,61 @@ function  isStatusCode(val: number): val is statusCodes{
 
 
 router.post("/status", async (req, res) => {
+  
   const parsed = statusCheck.safeParse(req.body)
+
   if (!parsed.success){
+    logger.error("Wrong type of sid or not sid")
     return res.status(400).json({
       error: "Wrong type of sid or not sid"
+    
     })
   }
+  const sid = parsed.data.sid;
+  const payStatuslogger = logger.child(
+    {sid: sid}
+  );
+  const P24_POS_ID = (process.env.P24_POS_ID ?? "").trim();
+  const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
+  const baseUrl =  "https://sandbox.przelewy24.pl";
+  let resp;
+  const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
+  try{
+    resp = await db.select({price: reservations.price}).from(payments).innerJoin(reservations,eq(reservations.id,payments.reservations_id)).where(eq(payments.token,sid))
+  }
+  catch{
+    payStatuslogger.error("db fatal error")
+  }
+  let price = 0;
+  if (resp && resp.length>0){
+    const price = resp[0]
+  }
+  else{
+    payStatuslogger.error("DB error")
+    return res.status(402)
+  }
+  payStatuslogger.info("sending a request to p24")
+
+  const p24response = await fetch(baseUrl + "/api/v1/transaction/verify",
+    {
+      method: "POST",
+      redirect: "manual",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        "merchantId": P24_POS_ID,
+        "posId": P24_POS_ID,
+        "sessionId": sid,
+        "amount": price,
+        "currency": "PLN",
+        "orderId": 0,
+        "sign": "string"
+      })
+    }
+  )
   // zastapic na zapytanie do p24
   const statusData = await db.select({ status: mockP24Tokens.status }).from(mockP24Tokens).where(eq(mockP24Tokens.token, parsed.data.sid))
   if (statusData.length > 0){
@@ -158,6 +217,44 @@ router.post("/status", async (req, res) => {
   })
 })
 
+const PaymentStatus = z.object(
+  {
+    token : z.coerce.string()
+  }
+
+)
+
+router.post("/checkpayment", async (req, res) => {
+  const parsed = PaymentStatus.safeParse(req.body)
+  if (!parsed.success){
+    return res.status(400).json({
+      paymentStatus : "error",
+      errDescription : "Wrong SessionID Format"
+    })
+  }
+
+  const sid = parsed.data.token
+  let result;
+  try{
+    result = await db.select({ status: payments.status }).from(payments).where(eq(payments.token, sid))
+  }
+  catch{
+    return res.status(402).json({
+      paymentStatus : "error",
+      errDescription : "Database connection cannot be established , try again later"
+    })
+  }
+  if (result && result.length>0){
+    const status = result[0].status
+    return res.status(200).json({ paymentStatus: status })
+    }
+  else{
+    return res.status(404).json({
+      paymentStatus : "error",
+      errDescription : "Wrong SessionID"
+    })
+  }
+})
 
 
 router.post("/begin", async (req, res) => {

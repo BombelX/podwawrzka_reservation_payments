@@ -36,3 +36,5 @@ export const mockP24Tokens = sqliteTable("mock_p24_tokens",{
     token: text().notNull(),
     status: int().notNull()
 })
+
+

@@ -70,6 +70,10 @@ const ReservationRequest = z.object({
 });
 
 
+router.get("/prices", async(_req, res) => {
+
+}
+),
 
 router.post("/make", async(req, res) => {
     console.log("[REQ] /reservations/make query:", req.query);
@@ -147,13 +151,6 @@ router.post("/make", async(req, res) => {
             reservationId: insertReservation.lastInsertRowid
         }
         )
-
-
-
-
-
-        
-
     } else {
         return res.status(400).json(
         {
@@ -161,7 +158,6 @@ router.post("/make", async(req, res) => {
         }
         )
     }
-
 }),
 
 router.get("/already", async(req,res) =>{

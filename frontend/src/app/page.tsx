@@ -62,7 +62,7 @@ export default function Home() {
       <label>Imię i nazwisko</label>
       <input value={contactData.name} onChange={(e) => setContactData({ ...contactData, name: e.target.value })} className="border-1 input bg-white text-black border-black rounded" type="text" />
       <label>Adres e-mail:</label>
-      <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
+      <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2" >
         <svg className="h-5 w-5 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <g
             strokeLinejoin="round"
@@ -77,7 +77,7 @@ export default function Home() {
         </svg>
         <input type="email" className="flex-1 bg-transparent outline-none rounded-md" placeholder="email@gmail.com" required />
       </label>
-      <div className="validator-hint hidden">Enter valid email address</div>
+      <div className="validator-hint hidden">Wpisz poprawny adres e-mail</div>
       <label>Potwierdzenie adresu e-mail:</label>
       <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
         <svg className="h-5 w-5 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -114,11 +114,11 @@ export default function Home() {
         type="tel"
         className="tabular-nums"
         required
-        placeholder="Phone"
+        placeholder="Nr. telefonu"
         pattern="[0-9]*"
         minLength={9}
         maxLength={11}
-        title="Must be 10 digits"
+        title="Musi mieć 9 cyfr"
         />
       </label>
       <p className="validator-hint">Musi miec 9 cyfr</p>

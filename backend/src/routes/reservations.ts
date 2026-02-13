@@ -2,10 +2,12 @@ import { Router } from "express";
 import { date, set, z } from "zod";
 import { db } from "../db/client";
 import { reservations, users } from "../db/schema";
-import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
+import { and, or, gte, lte,lt,gt, sql, count, eq } from "drizzle-orm";
 import { parse } from "node:path";
 import { error } from "node:console";
-import ical, { VEvent } from "node-ical";
+import * as icalParse from "node-ical";
+import icalgen, { ICalCalendarMethod } from "ical-generator";
+import { start } from "node:repl";
 
 const router = Router();
 
@@ -65,12 +67,12 @@ async function addIcsToSet(url: string, set: Set<Reservation3rdPartyT>) {
   if (!res.ok) throw new Error(`iCal fetch failed: ${res.status} ${res.statusText}`);
 
   const icsText = await res.text();
-  const events = ical.parseICS(icsText);
+  const events = icalParse.parseICS(icsText);
 
   const now = new Date();
 
   for (const e of Object.values(events)) {
-    const event = e as ical.VEvent;
+    const event = e as icalParse.VEvent;
     if (event.type !== "VEVENT") continue;
     if (!event.start || !event.end) continue;
     if (event.end <= now) continue;
@@ -209,12 +211,6 @@ router.post("/make", async(req, res) => {
         }
         )
 
-
-
-
-
-        
-
     } else {
         return res.status(400).json(
         {
@@ -224,6 +220,34 @@ router.post("/make", async(req, res) => {
     }
 
 }),
+
+
+
+router.get("/all", async(_req,res) =>{
+    const calendar = icalgen({name: 'podwawrzka_all_reservations'})
+    calendar.method(ICalCalendarMethod.PUBLISH);
+    const today = new Date().toISOString()
+    const result = await db.select({id:reservations.id,start:reservations.start,end:reservations.end}).from(reservations).where(
+        gte(reservations.end,today)
+    )
+
+    for (const resv of result){
+        calendar.createEvent({
+            id: `reservation@${resv.id}@podwawrzka`,
+            start: new Date(resv.start),
+            end: new Date(resv.end),
+            summary: "Zarezerwowane",
+            description: "Termin zarezerwowany",
+            allDay: true
+        })
+
+    }
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "public, max-age=300"); 
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", 'inline; filename="reservations.ics"');
+    return res.send(calendar.toString());
+})
 
 router.get("/already", async(req,res) =>{
     const parsed = ReservationMonth.safeParse(req.query)
@@ -240,13 +264,16 @@ router.get("/already", async(req,res) =>{
     const monthStartStr = monthStart.toISOString();
     const monthEndStr = monthEnd.toISOString();
     const result = await db
-        .select({start: reservations.start, end: reservations.end})
+        .select({
+            start: sql<string>`date(${reservations.start})`.as("start"),
+            end: sql<string>`date(${reservations.end})`.as("endExclusive"),
+        })
         .from(reservations)
         .where(
-        and(
-            lte(reservations.start, monthEndStr), 
-            gte(reservations.end, monthStartStr)  
-        )
+            and(
+            lt(reservations.start, monthEndStr),
+            gt(reservations.end, monthStartStr),
+            )
         );
     
         console.log(result);

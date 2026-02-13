@@ -240,7 +240,7 @@ router.get("/already", async(req,res) =>{
     const monthStartStr = monthStart.toISOString();
     const monthEndStr = monthEnd.toISOString();
     const result = await db
-        .select({start: reservations.start, end: reservations.end})
+        .select({start: reservations.start,  end: sql<string>`datetime(${reservations.end}, '-1 day')`.as("end")})
         .from(reservations)
         .where(
         and(

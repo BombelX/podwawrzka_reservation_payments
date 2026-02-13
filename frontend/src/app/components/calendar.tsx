@@ -162,10 +162,10 @@ import { start } from "repl";
             const reservations: ApiReservation[] = data;
 
             reservations.forEach(reservation => {
-                const startDate = new Date(reservation.start);
-                const endDate = new Date(reservation.end)
-                let loop = new Date(startDate)
-                for (let day = startDate; day <= endDate; day.setDate(day.getDate() + 1)) {
+                const startDate = new Date(reservation.start + "T00:00:00")
+                const endDate = new Date(reservation.end + "T00:00:00")
+                // let loop = new Date(startDate)
+                for (let day = new Date(startDate); day <= endDate; day.setDate(day.getDate() + 1)) {
                     if (day.getMonth() == this.monthNumber && day.getFullYear() == this.parentYear.yearNumber){
                         const dayToDisable = this.childrens.find((c) => c.dayNumber === day.getDate());
                         dayToDisable?.setDisabled(true)

@@ -5,7 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 import { db } from "./db/client";
 import { reservations } from "./db/schema";
-
+import { sync3PartyReservations } from './routes/reservations';
 import cors from 'cors';
 import reservationsRouter from './routes/reservations';
 import paymentsRouter from './routes/payments';
@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3100;
-app.listen(PORT, () => console.log(`Serwer działa na porcie ${PORT}`));
+app.listen(PORT, async () => {console.log(`Serwer działa na porcie ${PORT}`);try { await sync3PartyReservations(); } catch (e) { console.error(e); }; setInterval(sync3PartyReservations, 120000);});
 
 
 

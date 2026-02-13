@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { z } from "zod";
+import { date, set, z } from "zod";
 import { db } from "../db/client";
 import { reservations, users } from "../db/schema";
 import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
 import { parse } from "node:path";
 import { error } from "node:console";
+import ical, { VEvent } from "node-ical";
 
 const router = Router();
 
@@ -13,7 +14,7 @@ const ReservationMonth = z.object({
     year: z.coerce.number().int().min(2023)
 })
 
-
+let cached3rdPartyReservations: Set<z.infer<typeof Reservation3rdParty>> = new Set();
 /**
  * @openapi
  * /reservations/already:
@@ -51,6 +52,66 @@ const ReservationMonth = z.object({
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
+const Reservation3rdParty = z.object({
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+});
+
+type Reservation3rdPartyT = z.infer<typeof Reservation3rdParty>;
+
+async function addIcsToSet(url: string, set: Set<Reservation3rdPartyT>) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`iCal fetch failed: ${res.status} ${res.statusText}`);
+
+  const icsText = await res.text();
+  const events = ical.parseICS(icsText);
+
+  const now = new Date();
+
+  for (const e of Object.values(events)) {
+    const event = e as ical.VEvent;
+    if (event.type !== "VEVENT") continue;
+    if (!event.start || !event.end) continue;
+    if (event.end <= now) continue;
+
+    const reservation = Reservation3rdParty.parse({
+      start: new Date(event.start).toISOString(),
+      end: new Date(event.end).toISOString(),
+    });
+
+    set.add(reservation);
+  }
+}
+
+
+
+export async function sync3PartyReservations() {
+  const tempSet = new Set<z.infer<typeof Reservation3rdParty>>();
+
+  const icalUrl1 = process.env.THIRD_PARTY_ICAL_URL_1;
+  const icalUrl2 = process.env.THIRD_PARTY_ICAL_URL_2;
+
+  if (!icalUrl1 && !icalUrl2) {
+    console.log("No 3rd party ical urls provided, skipping sync");
+    return;
+  }
+
+  try {
+    if (icalUrl1) await addIcsToSet(icalUrl1, tempSet);
+    if (icalUrl2) await addIcsToSet(icalUrl2, tempSet);
+  } catch (e) {
+    console.error("3rd party iCal sync failed:", e);
+    return;
+  }
+
+  console.log(tempSet);
+  cached3rdPartyReservations = tempSet;
+}
+
+
+
+
 
 const ReservationRequest = z.object({
     start: z.string().refine((date) => !isNaN(Date.parse(date)), {
@@ -91,7 +152,7 @@ router.post("/make", async(req, res) => {
     const today : Date = new Date();
     if (startDate < today){
         return res.status(400).json({
-            error: "Nie da się zarezerować przeszłośći"
+            error: "Nie da się zarezerować przeszłości"
         })
     }
 
@@ -175,7 +236,7 @@ router.get("/already", async(req,res) =>{
     const monthStartStr = monthStart.toISOString();
     const monthEndStr = monthEnd.toISOString();
     const result = await db
-        .select({start: reservations.start, end: reservations.end})
+        .select({start: reservations.start,  end: sql<string>`datetime(${reservations.end}, '-1 day')`.as("end")})
         .from(reservations)
         .where(
         and(
@@ -183,7 +244,15 @@ router.get("/already", async(req,res) =>{
             gte(reservations.end, monthStartStr)  
         )
         );
-    console.log(result);
+    
+        console.log(result);
+    result.push(...Array.from(cached3rdPartyReservations).filter((res: z.infer<typeof Reservation3rdParty>) => {
+        const resStart = new Date(res.start);
+        const resEnd = new Date(res.end);
+        return resStart <= monthEnd && resEnd >= monthStart;
+    }))
+    
+    
     return res.json(result);
     
 

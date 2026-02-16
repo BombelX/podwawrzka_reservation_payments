@@ -24,7 +24,7 @@ app.use(express.json());
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/reservations", reservationsRouter);
 app.use("/payments", paymentsRouter);
-app.use("/emails",emialsRouter)
+app.use("/emails", emialsRouter)
 
 
 

@@ -441,6 +441,40 @@ export default function Home() {
           >
             Zarezerwuj i przejdź do płatności
           </button>
+          <button
+            className="btn btn-primary btn-outline hover:scale-102 transition-all duration-500"
+            onClick={async () => {
+              console.log("Wysylanie maila z przypomnieniem...");
+              await fetch("http://46.224.13.142:3100/emails/send", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  reciverEmail: "adam.rassem@op.pl",
+                  reservationStart: CalendarSelectedDate
+                    ? new Date(
+                        CalendarSelectedDate.start.year,
+                        CalendarSelectedDate.start.month,
+                        CalendarSelectedDate.start.day,
+                      )
+                    : null,
+                  reservationEnd: CalendarSelectedDate
+                    ? new Date(
+                        CalendarSelectedDate.end.year,
+                        CalendarSelectedDate.end.month,
+                        CalendarSelectedDate.end.day,
+                      )
+                    : null,
+                  amount: price * 100,
+                  orderID: Date.now(), // number as required by schema
+                  information: 12, // number as required by schema
+                }),
+              });
+            }}
+          >
+            Wyslij Maila z przypomnieniem
+          </button>
           {/* <button onClick={callAlert} className="btn rounded-xl">
             Pobierz dane o rezerwacjach
           </button> */}

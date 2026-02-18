@@ -52,7 +52,7 @@ export default function Home() {
 
   return (
     <div className="flex p-5 flex-col">
-      <div className="font-sans bg-gray-100 flex flex-col  w-full h-full gap-3  items-center justify-items-center min-h-screen">
+      <div className="font-sans bg-[#F8F6F2] flex flex-col  w-full h-full gap-3  items-center justify-items-center min-h-screen">
         <div className="flex flex-col sm:flex-row">
           <div className="m-2 p-4 flex flex-col justify-right gap-2">
             <fieldset className="fieldset">
@@ -67,7 +67,7 @@ export default function Home() {
                 type="text"
               />
               <label>Adres e-mail:</label>
-              <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
+              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md px-3 py-2 flex items-center gap-2">
                 <svg
                   className="h-5 w-5 opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
@@ -85,6 +85,9 @@ export default function Home() {
                   </g>
                 </svg>
                 <input
+                  onChange={(e) =>
+                    setContactData({ ...contactData, email: e.target.value })
+                  }
                   type="email"
                   className="flex-1 bg-transparent outline-none rounded-md"
                   placeholder="email@gmail.com"
@@ -95,7 +98,7 @@ export default function Home() {
                 Wpisz poprawny adres e-mail
               </div>
               <label>Potwierdzenie adresu e-mail:</label>
-              <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
+              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md px-3 py-2 flex items-center gap-2">
                 <svg
                   className="h-5 w-5 opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
@@ -120,7 +123,7 @@ export default function Home() {
                 />
               </label>
               <label>Numer telefonu:</label>
-              <label className="input validator bg-white text-black border border-black rounded-md">
+              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md">
                 <svg
                   className="h-[1em] opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
@@ -140,165 +143,168 @@ export default function Home() {
                   </g>
                 </svg>
                 <input
+                  onChange={(e) =>
+                    setContactData({ ...contactData, phone: e.target.value })
+                  }
                   type="tel"
                   className="tabular-nums"
                   required
                   placeholder="Nr. telefonu"
                   pattern="[0-9]*"
                   minLength={9}
-                  maxLength={11}
+                  maxLength={12}
                   title="Musi mieć 9 cyfr"
                 />
               </label>
               <p className="validator-hint">Musi miec 9 cyfr</p>
               <label>Czas przyjazdu:</label>
-              <select className="select bg-white text-black border-1 border-black rounded p-2 ">
+              <select className="select bg-white text-black border-1 border-[#3E3A37] rounded p-2 ">
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="null"
                 >
                   Niewiem
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="00:00 - 1:00"
                 >
                   00:00 - 1:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="1:00 - 2:00"
                 >
                   1:00 - 2:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="2:00 - 3:00"
                 >
                   2:00 - 3:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="3:00 - 4:00"
                 >
                   3:00 - 4:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="4:00 - 5:00"
                 >
                   4:00 - 5:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="5:00 - 6:00"
                 >
                   5:00 - 6:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="6:00 - 7:00"
                 >
                   6:00 - 7:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="7:00 - 8:00"
                 >
                   7:00 - 8:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="8:00 - 9:00"
                 >
                   8:00 - 9:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="9:00 - 10:00"
                 >
                   9:00 - 10:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="10:00 - 11:00"
                 >
                   10:00 - 11:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="11:00 - 12:00"
                 >
                   11:00 - 12:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="12:00 - 13:00"
                 >
                   12:00 - 13:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="13:00 - 14:00"
                 >
                   13:00 - 14:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="14:00 - 15:00"
                 >
                   14:00 - 15:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="15:00 - 16:00"
                 >
                   15:00 - 16:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="16:00 - 17:00"
                 >
                   16:00 - 17:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="17:00 - 18:00"
                 >
                   17:00 - 18:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="18:00 - 19:00"
                 >
                   18:00 - 19:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="19:00 - 20:00"
                 >
                   19:00 - 20:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="20:00 - 21:00"
                 >
                   20:00 - 21:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="21:00 - 22:00"
                 >
                   21:00 - 22:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="22:00 - 23:00"
                 >
                   22:00 - 23:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="23:00 - 00:00"
                 >
                   23:00 - 00:00
@@ -306,7 +312,7 @@ export default function Home() {
               </select>
               <label>Ile osób:</label>
               <select
-                className="select bg-white text-black border-1 border-black rounded p-2"
+                className="select bg-white text-black border-1 border-[#3E3A37] rounded p-2"
                 onChange={(e) => setGuestNumber(parseInt(e.target.value))}
                 defaultValue={"2"}
               >
@@ -474,6 +480,30 @@ export default function Home() {
             }}
           >
             Wyslij Maila z przypomnieniem
+          </button>
+          <button
+            onClick={async () => {
+              console.log(contactData);
+              // return;
+
+              const response = await fetch(
+                "http://46.224.13.142:3100/notify/sendsms",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    phoneNumber: contactData.phone,
+                    message: `Dziękujemy za rezerwację w dniach od ${CalendarSelectedDate?.start.day}.${CalendarSelectedDate?.start.month}.${CalendarSelectedDate?.start.year} do ${CalendarSelectedDate?.end.day}.${CalendarSelectedDate?.end.month}.${CalendarSelectedDate?.end.year}. Czekamy na Was!`,
+                  }),
+                },
+              );
+            }}
+            className="btn btn-secoundary"
+          >
+            {" "}
+            Wyslij SMSa
           </button>
           {/* <button onClick={callAlert} className="btn rounded-xl">
             Pobierz dane o rezerwacjach

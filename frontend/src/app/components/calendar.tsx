@@ -8,6 +8,8 @@ import {
   ForwardedRef,
 } from "react";
 import React from "react";
+import calendarColors from "../colors/Calendarcolors.json";
+
 
 interface ICalendarInterface {
   showInfo: () => void;
@@ -211,13 +213,13 @@ class Day extends CalendarElement {
   parentMonth: Month;
   day: number;
   selected: boolean = false;
-  hovers: string = "hover:bg-[#379237] hover:text-white";
+  hovers: string = calendarColors.normalDayHoverBackGround + " " + calendarColors.normalDayHoverTextColor;
   style: string = "";
-  backGroundColor: string = "bg-white";
+  backGroundColor: string = calendarColors.normalDayBackGround;
   isBetweenSelected: boolean = false;
   isDisabled: boolean = false;
-  borderColor: string = "border-[#D5EAD8]/30";
-  textColor: string = "text-[#2F3B40]";
+  borderColor: string = calendarColors.normalDayBorderColor;
+  textColor: string = calendarColors.normalDayTextColor;
   constructor(parentMonth: Month, dayNumber: number) {
     super();
     this.parentMonth = parentMonth;
@@ -225,7 +227,7 @@ class Day extends CalendarElement {
     this.day = this.calcDayOfWeek();
     if (this.day == 6 || this.day == 7) {
       this.price += 100;
-      this.textColor = "text-gray-900";
+      this.textColor = calendarColors.weekendDayTextColor;
     }
     const today: Date = new Date();
     if (
@@ -233,12 +235,12 @@ class Day extends CalendarElement {
       parentMonth.monthNumber == today.getMonth() &&
       parentMonth.parentYear.yearNumber == today.getFullYear()
     ) {
-      this.backGroundColor = "bg-[#849831ff]  ";
-      this.textColor = "text-white";
+      this.backGroundColor = calendarColors.todayBackGround;
+      this.textColor = calendarColors.todayTextColor;
     }
-    if (dayNumber == 5) {
-      this.setDisabled(true);
-    }
+    // if (dayNumber == 5) {
+    //   this.setDisabled(true);
+    // }
     if (
       this.fixedHolidays.includes(
         `${this.parentMonth.monthNumber + 1}-${dayNumber}`,
@@ -252,20 +254,20 @@ class Day extends CalendarElement {
   setSelected(value: boolean) {
     this.selected = value;
     if (value) {
-      this.borderColor = "border-0.5 border-[#379237]";
-      this.backGroundColor = "bg-[#5B7553] ";
-      this.textColor = "text-[#0C1406]";
+      this.borderColor = "border-0.5 " + calendarColors.selectedDayBorderColor;
+      this.backGroundColor = calendarColors.selectedDayBackGround;
+      this.textColor = calendarColors.selectedDayTextColor;
       this.style =
-        "outline-none ring-2 ring-[#54B435] ring-offset-2 ring-offset-[#2F3B40]";
+        "outline-none ring-1  ring-offset-1 " + calendarColors.selectedDayRingColor;
     } else {
       this.style = "";
-      this.borderColor = "border-[#D5EAD8]/30";
-      this.backGroundColor = "bg-white";
+      this.borderColor = calendarColors.normalDayBorderColor;
+      this.backGroundColor = calendarColors.normalDayBackGround;
       if (this.day == 6 || this.day == 7) {
-        this.textColor = "text-gray-100";
-        this.backGroundColor = "bg-black/55";
+        this.textColor = calendarColors.weekendDayTextColor;
+        this.backGroundColor = calendarColors.weekendDayBackGround;
       } else {
-        this.textColor = "text-black";
+        this.textColor = calendarColors.normalDayTextColor;
       }
       const today: Date = new Date();
       if (
@@ -273,8 +275,8 @@ class Day extends CalendarElement {
         this.parentMonth.monthNumber == today.getMonth() &&
         this.parentMonth.parentYear.yearNumber == today.getFullYear()
       ) {
-        this.backGroundColor = "bg-[#54B435]";
-        this.textColor = "text-white";
+        this.backGroundColor = calendarColors.todayBackGround;
+        this.textColor = calendarColors.todayTextColor;
       }
       if (this.isDisabled) {
         this.setDisabled(true);
@@ -284,18 +286,18 @@ class Day extends CalendarElement {
   setDisabled(value: boolean) {
     this.isDisabled = value;
     if (value) {
-      this.borderColor = "border-1.5 border-gray-400/15";
+      this.borderColor = "border-1.5 " + calendarColors.disabledDayBorderColor;
       this.hovers = "";
-      this.backGroundColor = "bg-[#E5E0D8]";
-      this.textColor = "text-[#A09B95]";
+      this.backGroundColor = calendarColors.disabledDayBackGround;
+      this.textColor = calendarColors.disabledDayTextColor;
     } else {
-      this.borderColor = "border-[#D5EAD8]/30";
-      this.backGroundColor = "bg-white";
+      this.borderColor = calendarColors.normalDayBorderColor;
+      this.backGroundColor = calendarColors.normalDayBackGround;
       if (this.day == 6 || this.day == 7) {
-        this.textColor = "text-gray-100";
-        this.backGroundColor = "bg-black/55";
+        this.textColor = calendarColors.weekendDayTextColor;
+        this.backGroundColor = calendarColors.weekendDayBackGround;
       } else {
-        this.textColor = "text-black";
+        this.textColor = calendarColors.normalDayTextColor;
       }
       const today: Date = new Date();
       if (
@@ -303,7 +305,8 @@ class Day extends CalendarElement {
         this.parentMonth.monthNumber == today.getMonth() &&
         this.parentMonth.parentYear.yearNumber == today.getFullYear()
       ) {
-        this.backGroundColor = "bg-[#54B435]";
+        this.backGroundColor = calendarColors.todayBackGround;
+        this.textColor = calendarColors.todayTextColor;
       }
     }
   }
@@ -311,17 +314,17 @@ class Day extends CalendarElement {
   setIsBetweenSelected(value: boolean) {
     this.isBetweenSelected = value;
     if (value) {
-      this.borderColor = "border border-[#6b9e8f]";
-      this.backGroundColor = "bg-[#a8c9bf]";
-      this.textColor = "text-[#2F3B40]";
+      this.borderColor = "border " + calendarColors.betweenSelectedDayBorderColor;
+      this.backGroundColor = calendarColors.betweenSelectedDayBackGround;
+      this.textColor = calendarColors.betweenSelectedDayTextColor;
     } else {
-      this.borderColor = "border-[#D5EAD8]/30";
-      this.backGroundColor = "bg-white";
+      this.borderColor = calendarColors.normalDayBorderColor;
+      this.backGroundColor = calendarColors.normalDayBackGround;
       if (this.day == 6 || this.day == 7) {
-        this.textColor = "text-gray-100";
-        this.backGroundColor = "bg-black/55";
+        this.textColor = calendarColors.weekendDayTextColor;
+        this.backGroundColor = calendarColors.weekendDayBackGround;
       } else {
-        this.textColor = "text-[#2F3B40]";
+        this.textColor = calendarColors.normalDayTextColor;
       }
       const today: Date = new Date();
       if (
@@ -329,30 +332,29 @@ class Day extends CalendarElement {
         this.parentMonth.monthNumber == today.getMonth() &&
         this.parentMonth.parentYear.yearNumber == today.getFullYear()
       ) {
-        this.backGroundColor = "bg-[#54B435]";
-        this.textColor = "text-white";
+        this.backGroundColor = calendarColors.todayBackGround;
+        this.textColor = calendarColors.todayTextColor;
       }
       if (this.isDisabled) {
         this.setDisabled(true);
       }
     }
   }
-
   setIsBetweenSelectedEdge(value: boolean, isStart: boolean) {
     if (value) {
-      this.borderColor = "border-2 border-[#5a8d7f]";
-      this.backGroundColor = "bg-[#8da399]";
-      this.textColor = "text-white";
+      this.borderColor = "border-1 "+ calendarColors.selectedDayBorderColor;
+      this.backGroundColor = calendarColors.selectedDayBackGround;
+      this.textColor = calendarColors.selectedDayTextColor;
       this.style = "ring-1 ring-[#6b9e8f]";
     } else {
-      this.borderColor = "border-[#D5EAD8]/30";
-      this.backGroundColor = "bg-white";
+      this.borderColor = calendarColors.normalDayBorderColor;
+      this.backGroundColor = calendarColors.normalDayBackGround;
       this.style = "";
       if (this.day == 6 || this.day == 7) {
-        this.textColor = "text-gray-100";
-        this.backGroundColor = "bg-black/55";
+        this.textColor = calendarColors.weekendDayTextColor;
+        this.backGroundColor = calendarColors.weekendDayBackGround;
       } else {
-        this.textColor = "text-[#2F3B40]";
+        this.textColor = calendarColors.normalDayTextColor;
       }
       const today: Date = new Date();
       if (
@@ -360,8 +362,8 @@ class Day extends CalendarElement {
         this.parentMonth.monthNumber == today.getMonth() &&
         this.parentMonth.parentYear.yearNumber == today.getFullYear()
       ) {
-        this.backGroundColor = "bg-[#54B435]";
-        this.textColor = "text-white";
+        this.backGroundColor = calendarColors.todayBackGround;
+        this.textColor = calendarColors.todayTextColor;
       }
     }
   }
@@ -373,8 +375,8 @@ class Day extends CalendarElement {
     );
     const dayOfWeek: number = date.getDay() == 0 ? 7 : date.getDay();
     if (dayOfWeek == 6 || dayOfWeek == 7) {
-      this.backGroundColor = "bg-[#F4EDE4]";
-      this.textColor = "text-gray-900";
+      this.backGroundColor = calendarColors.weekendDayBackGround;
+      this.textColor = calendarColors.weekendDayTextColor;
     }
     return dayOfWeek;
   }
@@ -808,28 +810,28 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
     return (
       <div
         ref={containerRef}
-        className="w-full max-w-[800px] rounded-2xl bg-[#FEF8F2] border-1 border-gray-200 p-3"
+        className="w-full max-w-[800px] rounded-2xl bg-[#FAF6F0] border-1 border-gray-200 p-3"
       >
         <div className="flex items-center justify-between gap-4">
           <button
             onClick={handlePrev}
-            className="btn btn-ghost text-xs rounded-full text-white bg-[#7BAA5E]/80 hover:bg-[#567351] border-green-500/3"
+            className={"btn btn-ghost text-xs rounded-full " + calendarColors.arrowsBackGroundColor + " hover:" + calendarColors.arrowsHoverBackGroundColor + " " + calendarColors.arrowsBorderColor + " " + calendarColors.arrowsTextColor}
           >
             &larr;
           </button>
 
           <div className="flex flex-col items-center">
-            <div className="badge bg-[#7BAA5E]/85 border-green-800/10 text-white">
+            <div className={"badge " + calendarColors.badgesBackGroundColor + " " + calendarColors.badgesTextColor + " " + calendarColors.badgesBorderColor}>
               {activeMonth.parentYear.yearNumber}
             </div>
-            <div className="badge bg-[#7BAA5E]/85 border-green-800/10 text-white mt-1">
+            <div className={"badge " + calendarColors.badgesBackGroundColor + " " + calendarColors.badgesTextColor + " " + calendarColors.badgesBorderColor + " mt-1"}>
               {monthNames[activeMonth.monthNumber]}
             </div>
           </div>
 
           <button
             onClick={handleNext}
-            className="btn btn-ghost text-xs rounded-full text-white bg-[#7BAA5E]/80 hover:bg-[#567351] border-green-500/3"
+            className={"btn btn-ghost text-xs rounded-full " + calendarColors.arrowsBackGroundColor + " hover:" + calendarColors.arrowsHoverBackGroundColor + " " + calendarColors.arrowsBorderColor + " " + calendarColors.arrowsTextColor}
           >
             &rarr;
           </button>
@@ -847,8 +849,8 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
               key={d}
               className={`
                flex mt-2  items-center  justify-center rounded-md
-               bg-white/95 text-[#6B8E65] text-sm p-2
-               ${i >= 5 ? "opacity-90" : ""}  
+               bg-white/95  text-sm p-2
+               ${i >= 5 ? "opacity-90" : "" + calendarColors.dayOfWeekTextColor}  
                h-6
              `}
             >

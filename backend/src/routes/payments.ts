@@ -4,13 +4,8 @@ import { db } from "../db/client";
 import { mockP24Tokens, payments, reservations, users } from "../db/schema";
 import * as crypto from "crypto";
 import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
-import { string } from "zod/v4/classic/coerce.cjs";
-import { parse } from "path";
-import { error } from "console";
 import winston, { child } from "winston"
-import { replace } from "react-router";
-import { id } from "zod/v4/locales";
-import { sha384_hex } from "zod/v4/core/regexes.cjs";
+import { sendSMS,sendEmail } from "./clientNotify";
 import { stat } from "fs";
 const { combine, timestamp, errors, json } = winston.format;
 const logger = winston.createLogger({
@@ -41,7 +36,8 @@ const PaymentsData = z.object(
         phone: z.coerce.string(),
         start: z.coerce.date(),
         end: z.coerce.date(),
-        arrivalTime: z.number()
+        arrivalTime: z.number(),
+        guestNumber: z.number()
     }
 )
 
@@ -166,11 +162,9 @@ router.post("/status", async (req, res) => {
 
   const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
 
-  // Używaj dokładnie tych samych wartości, które przyszły z notyfikacji
   const amount: number = Number(parsed.data.amount);
   const orderId: number = Number(parsed.data.orderId);
-  const currency: string = parsed.data.currency; // nie hard-coduj "PLN" na wszelki wypadek
-
+  const currency: string = parsed.data.currency; 
   payStatuslogger.info("sending a request to p24");
 
   const signParams = {
@@ -234,8 +228,22 @@ router.post("/status", async (req, res) => {
       .update(payments)
       .set({ status }) // poprawka: musi być obiekt
       .where(eq(payments.token, sid));
-  }
+      const orderinfo = await db
+      .select()
+      .from(reservations)
+      .innerJoin(users, eq(users.id, reservations.user_id))
+      .where(eq(reservations.id, orderId));
 
+
+      if (status == 'success'){
+        sendEmail(orderinfo[0].users.email,amount/100,orderId,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
+           orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start,orderinfo[0].reservations.end);
+        // sendSMS("Dziękujemy za rezerwację","+48739973665");
+      }
+  }
+  if (status == ""){
+
+  }
   return res.status(200).json({ status });
 });
 
@@ -283,9 +291,10 @@ router.post("/checkpayment", async (req, res) => {
 
 
 router.post("/begin", async (req, res) => {
-
   const parsed = PaymentsData.safeParse(req.body);
   if (!parsed.success) {
+
+    console.log("here")
     return res.status(400).json({ error: "Wrong Payment Data", details: parsed.error.issues });
   }
   const data = parsed.data;
@@ -296,6 +305,7 @@ router.post("/begin", async (req, res) => {
   const msPerDay = 1000 * 60 * 60 * 24;
   const nights = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / msPerDay));
   const price = Math.round(Number(data.amount));
+  const guestNumber = data.guestNumber;
 
   let paymentId: number | undefined;
   try {
@@ -315,7 +325,7 @@ router.post("/begin", async (req, res) => {
         user_id: userId,
         nights,
         price,
-        how_many_people: 2,
+        how_many_people: guestNumber,
       }).run();
       const reservationId = Number(r.lastInsertRowid);
 
@@ -326,6 +336,7 @@ router.post("/begin", async (req, res) => {
         user_id: userId,
       }).run();
       paymentId = Number(p.lastInsertRowid);
+
     });
   } catch (e: any) {
     return res.status(500).json({ error: "DB transaction failed", details: e?.message });

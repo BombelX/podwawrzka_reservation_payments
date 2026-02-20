@@ -1,17 +1,15 @@
-import { response, Router } from "express";
+import e, { response, Router } from "express";
 import { z } from "zod";
 import { db } from "../db/client";
-import { mockP24Tokens, payments, reservations, users } from "../db/schema";
+import { mockP24Tokens, payments, reservations, specialPrices, users } from "../db/schema";
 import * as crypto from "crypto";
-import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
-import { string } from "zod/v4/classic/coerce.cjs";
-import { parse } from "path";
-import { error } from "console";
+import { and, or, gte, lte, sql, count, eq ,lt, gt} from "drizzle-orm";
 import winston, { child } from "winston"
-import { replace } from "react-router";
-import { id } from "zod/v4/locales";
-import { sha384_hex } from "zod/v4/core/regexes.cjs";
+import { sendSMS,sendEmail } from "./clientNotify";
+import { cached3rdPartyReservations, sync3PartyReservations} from "./reservations";
 import { stat } from "fs";
+import { s } from "react-router/dist/development/index-react-server-client-BSxMvS7Z";
+import { ba } from "react-router/dist/development/instrumentation-iAqbU5Q4";
 const { combine, timestamp, errors, json } = winston.format;
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
@@ -30,6 +28,9 @@ const router = Router();
 //     year: z.coerce.number().int().min(2023)
 // })
 
+function toUtcMidnightISO(d: Date): string {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
+}
 
 const PaymentsData = z.object(
     {
@@ -41,7 +42,8 @@ const PaymentsData = z.object(
         phone: z.coerce.string(),
         start: z.coerce.date(),
         end: z.coerce.date(),
-        arrivalTime: z.number()
+        arrivalTime: z.string(),
+        guestNumber: z.number()
     }
 )
 
@@ -166,11 +168,9 @@ router.post("/status", async (req, res) => {
 
   const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
 
-  // Używaj dokładnie tych samych wartości, które przyszły z notyfikacji
   const amount: number = Number(parsed.data.amount);
   const orderId: number = Number(parsed.data.orderId);
-  const currency: string = parsed.data.currency; // nie hard-coduj "PLN" na wszelki wypadek
-
+  const currency: string = parsed.data.currency; 
   payStatuslogger.info("sending a request to p24");
 
   const signParams = {
@@ -234,8 +234,25 @@ router.post("/status", async (req, res) => {
       .update(payments)
       .set({ status }) // poprawka: musi być obiekt
       .where(eq(payments.token, sid));
-  }
 
+
+      const orderinfo = await db.select().from(payments).innerJoin(reservations, eq(payments.reservations_id, reservations.id)).innerJoin(users, eq(payments.user_id, users.id)
+       ).where(eq(payments.token, sid)).limit(1);
+
+      console.log(orderinfo.length);
+
+
+      if (status == 'success' && orderinfo.length > 0){
+          console.log(orderinfo[0]);
+         sendEmail(orderinfo[0].users.email,amount/100,orderId,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
+           orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start,orderinfo[0].reservations.end);
+
+        sendSMS("Dziękujemy za rezerwację w dniach od " + orderinfo[0].reservations.start + " do " + orderinfo[0].reservations.end + "\n Czekamy na Was! ","+48739973665");
+      }
+  }
+  if (status == ""){
+
+  }
   return res.status(200).json({ status });
 });
 
@@ -282,10 +299,78 @@ router.post("/checkpayment", async (req, res) => {
 })
 
 
-router.post("/begin", async (req, res) => {
+async function checkReservationConflicts(
+  data: z.infer<typeof PaymentsData>
+): Promise<boolean> {
+  if (data.start >= data.end) return false;
 
+  await sync3PartyReservations();
+
+  for (const reservation of cached3rdPartyReservations.values()) {
+    const rs = new Date(reservation.start);
+    const re = new Date(reservation.end);
+    if (rs < data.end && re > data.start) {
+      console.log("Found 3rd party reservation conflicts:", reservation);
+      return false;
+    }
+  }
+
+  const startISO = data.start.toISOString();
+  const endISO = data.end.toISOString();
+
+
+  const now = new Date();
+  if (data.start < now) {
+    console.log("Attempt to make reservation in the past:", data.start);
+    return false;
+  }
+
+
+  const resp = await db
+    .select()
+    .from(reservations)
+    .where(
+      and(
+        lt(reservations.start, endISO),
+        gt(reservations.end, startISO) 
+      )
+    );
+
+  if (resp.length > 0) {
+    console.log("Found reservation conflicts in DB:", resp);
+    return false;
+  }
+
+  return true;
+}
+
+function priceCheck( nights: number, guestNumber: number,start: Date,end: Date) {
+  const settings = require("../settings.json");
+  let totalPrice = nights *( settings.pricePerPerson * (guestNumber-1) + settings.basePrice); ;
+
+  const res = db.select().from(specialPrices).where(and(gte(specialPrices.date, start.toISOString()), lte(specialPrices.date, end.toISOString()))).all();
+  for (const reserv of res){
+    totalPrice += Math.max(0, reserv.price-settings.basePrice);
+  }
+
+
+  for (let day = new Date(start); day < end; day.setUTCDate(day.getUTCDate() + 1)) {
+    const dayOfWeek = day.getUTCDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      totalPrice += settings.weekendIncrease;
+    }
+    if (settings.fixedHolidays.includes(`${day.getUTCMonth() + 1}-${day.getUTCDate()}`)) {
+      totalPrice += settings.holidayIncrease;
+    }
+  }
+  return totalPrice;
+}
+
+router.post("/begin", async (req, res) => {
   const parsed = PaymentsData.safeParse(req.body);
   if (!parsed.success) {
+
+    console.log("here")
     return res.status(400).json({ error: "Wrong Payment Data", details: parsed.error.issues });
   }
   const data = parsed.data;
@@ -296,6 +381,19 @@ router.post("/begin", async (req, res) => {
   const msPerDay = 1000 * 60 * 60 * 24;
   const nights = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / msPerDay));
   const price = Math.round(Number(data.amount));
+  const guestNumber = data.guestNumber;
+
+
+  const calculatedPrice = priceCheck(nights, guestNumber,startDate,endDate);
+  if (price < calculatedPrice) {
+    return res.status(400).json({ error: "Price is too low", expected: calculatedPrice });
+  }
+  // reservation check
+  if (!(await checkReservationConflicts(data))) {
+    return res.status(400).json({ error: "Reservation conflicts detected" });
+  }
+
+  console.log("No reservation conflicts detected, proceeding with payment initiation.");
 
   let paymentId: number | undefined;
   try {
@@ -309,13 +407,13 @@ router.post("/begin", async (req, res) => {
       const userId = Number(u.lastInsertRowid);
 
       const r = tx.insert(reservations).values({
-        start: data.start.toISOString(),
-        end: data.end.toISOString(),
+        start: toUtcMidnightISO(data.start),
+        end: toUtcMidnightISO(data.end),
         arrivalTime: data.arrivalTime != null ? String(data.arrivalTime) : null,
         user_id: userId,
         nights,
         price,
-        how_many_people: 2,
+        how_many_people: guestNumber,
       }).run();
       const reservationId = Number(r.lastInsertRowid);
 
@@ -326,6 +424,7 @@ router.post("/begin", async (req, res) => {
         user_id: userId,
       }).run();
       paymentId = Number(p.lastInsertRowid);
+
     });
   } catch (e: any) {
     return res.status(500).json({ error: "DB transaction failed", details: e?.message });

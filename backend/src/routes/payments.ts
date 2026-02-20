@@ -1,12 +1,15 @@
-import { response, Router } from "express";
+import e, { response, Router } from "express";
 import { z } from "zod";
 import { db } from "../db/client";
-import { mockP24Tokens, payments, reservations, users } from "../db/schema";
+import { mockP24Tokens, payments, reservations, specialPrices, users } from "../db/schema";
 import * as crypto from "crypto";
-import { and, or, gte, lte, sql, count, eq } from "drizzle-orm";
+import { and, or, gte, lte, sql, count, eq ,lt, gt} from "drizzle-orm";
 import winston, { child } from "winston"
 import { sendSMS,sendEmail } from "./clientNotify";
+import { cached3rdPartyReservations, sync3PartyReservations} from "./reservations";
 import { stat } from "fs";
+import { s } from "react-router/dist/development/index-react-server-client-BSxMvS7Z";
+import { ba } from "react-router/dist/development/instrumentation-iAqbU5Q4";
 const { combine, timestamp, errors, json } = winston.format;
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
@@ -25,6 +28,9 @@ const router = Router();
 //     year: z.coerce.number().int().min(2023)
 // })
 
+function toUtcMidnightISO(d: Date): string {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
+}
 
 const PaymentsData = z.object(
     {
@@ -36,7 +42,7 @@ const PaymentsData = z.object(
         phone: z.coerce.string(),
         start: z.coerce.date(),
         end: z.coerce.date(),
-        arrivalTime: z.number(),
+        arrivalTime: z.string(),
         guestNumber: z.number()
     }
 )
@@ -228,17 +234,20 @@ router.post("/status", async (req, res) => {
       .update(payments)
       .set({ status }) // poprawka: musi być obiekt
       .where(eq(payments.token, sid));
-      const orderinfo = await db
-      .select()
-      .from(reservations)
-      .innerJoin(users, eq(users.id, reservations.user_id))
-      .where(eq(reservations.id, orderId));
 
 
-      if (status == 'success'){
-        sendEmail(orderinfo[0].users.email,amount/100,orderId,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
+      const orderinfo = await db.select().from(payments).innerJoin(reservations, eq(payments.reservations_id, reservations.id)).innerJoin(users, eq(payments.user_id, users.id)
+       ).where(eq(payments.token, sid)).limit(1);
+
+      console.log(orderinfo.length);
+
+
+      if (status == 'success' && orderinfo.length > 0){
+          console.log(orderinfo[0]);
+         sendEmail(orderinfo[0].users.email,amount/100,orderId,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
            orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start,orderinfo[0].reservations.end);
-        // sendSMS("Dziękujemy za rezerwację","+48739973665");
+
+        sendSMS("Dziękujemy za rezerwację w dniach od " + orderinfo[0].reservations.start + " do " + orderinfo[0].reservations.end + "\n Czekamy na Was! ","+48739973665");
       }
   }
   if (status == ""){
@@ -290,6 +299,73 @@ router.post("/checkpayment", async (req, res) => {
 })
 
 
+async function checkReservationConflicts(
+  data: z.infer<typeof PaymentsData>
+): Promise<boolean> {
+  if (data.start >= data.end) return false;
+
+  await sync3PartyReservations();
+
+  for (const reservation of cached3rdPartyReservations.values()) {
+    const rs = new Date(reservation.start);
+    const re = new Date(reservation.end);
+    if (rs < data.end && re > data.start) {
+      console.log("Found 3rd party reservation conflicts:", reservation);
+      return false;
+    }
+  }
+
+  const startISO = data.start.toISOString();
+  const endISO = data.end.toISOString();
+
+
+  const now = new Date();
+  if (data.start < now) {
+    console.log("Attempt to make reservation in the past:", data.start);
+    return false;
+  }
+
+
+  const resp = await db
+    .select()
+    .from(reservations)
+    .where(
+      and(
+        lt(reservations.start, endISO),
+        gt(reservations.end, startISO) 
+      )
+    );
+
+  if (resp.length > 0) {
+    console.log("Found reservation conflicts in DB:", resp);
+    return false;
+  }
+
+  return true;
+}
+
+function priceCheck( nights: number, guestNumber: number,start: Date,end: Date) {
+  const settings = require("../settings.json");
+  let totalPrice = nights *( settings.pricePerPerson * (guestNumber-1) + settings.basePrice); ;
+
+  const res = db.select().from(specialPrices).where(and(gte(specialPrices.date, start.toISOString()), lte(specialPrices.date, end.toISOString()))).all();
+  for (const reserv of res){
+    totalPrice += Math.max(0, reserv.price-settings.basePrice);
+  }
+
+
+  for (let day = new Date(start); day < end; day.setUTCDate(day.getUTCDate() + 1)) {
+    const dayOfWeek = day.getUTCDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      totalPrice += settings.weekendIncrease;
+    }
+    if (settings.fixedHolidays.includes(`${day.getUTCMonth() + 1}-${day.getUTCDate()}`)) {
+      totalPrice += settings.holidayIncrease;
+    }
+  }
+  return totalPrice;
+}
+
 router.post("/begin", async (req, res) => {
   const parsed = PaymentsData.safeParse(req.body);
   if (!parsed.success) {
@@ -307,6 +383,18 @@ router.post("/begin", async (req, res) => {
   const price = Math.round(Number(data.amount));
   const guestNumber = data.guestNumber;
 
+
+  const calculatedPrice = priceCheck(nights, guestNumber,startDate,endDate);
+  if (price < calculatedPrice) {
+    return res.status(400).json({ error: "Price is too low", expected: calculatedPrice });
+  }
+  // reservation check
+  if (!(await checkReservationConflicts(data))) {
+    return res.status(400).json({ error: "Reservation conflicts detected" });
+  }
+
+  console.log("No reservation conflicts detected, proceeding with payment initiation.");
+
   let paymentId: number | undefined;
   try {
     db.transaction((tx) => {
@@ -319,8 +407,8 @@ router.post("/begin", async (req, res) => {
       const userId = Number(u.lastInsertRowid);
 
       const r = tx.insert(reservations).values({
-        start: data.start.toISOString(),
-        end: data.end.toISOString(),
+        start: toUtcMidnightISO(data.start),
+        end: toUtcMidnightISO(data.end),
         arrivalTime: data.arrivalTime != null ? String(data.arrivalTime) : null,
         user_id: userId,
         nights,

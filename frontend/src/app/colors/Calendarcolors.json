@@ -1,0 +1,37 @@
+{
+    "normalDayBackGround": "bg-white",
+    "normalDayTextColor": "text-[#2F3B40]",
+    "normalDayBorderColor": "border-[#EDFBE2]",
+    "normalDayHoverBackGround": "hover:bg-[#C98B4B]",
+    "normalDayHoverTextColor": "hover:text-white",
+    
+    "weekendDayBackGround": "bg-[#FAF7F2]",
+    "weekendDayTextColor": "text-[#6B5E4C] font-semibold",
+
+    "todayBackGround": "bg-[#1C1917]",
+    "todayTextColor": "text-white",
+
+    "selectedDayBackGround": "bg-[#C98B4B]",
+    "selectedDayTextColor": "text-white",
+    "selectedDayBorderColor": "border-[#A6723E]",
+    "selectedDayRingColor": "ring-[#C98B4B]/30",
+
+    "disabledDayBackGround": "bg-[#F2EFE9]",
+    "disabledDayTextColor": "text-[#C2BDB3]",
+    "disabledDayBorderColor": "border-transparent",
+
+    "betweenSelectedDayBackGround": "bg-[#F2E3CA]",
+    "betweenSelectedDayTextColor": "text-[#5C3D2E] font-bold",
+    "betweenSelectedDayBorderColor": "border-[#D9A05B]/30",
+
+    "arrowsBackGroundColor": "bg-[#1C1917]",
+    "arrowsHoverBackGroundColor": "hover:bg-[#C98B4B]",
+    "arrowsTextColor": "text-white",
+    "arrowsBorderColor": "border-transparent",
+
+    "badgesBackGroundColor": "bg-[#1C1917]",
+    "badgesTextColor": "text-white",
+    "badgesBorderColor": "border-transparent",
+
+    "dayOfWeekTextColor": "text-[#8C7E6A]"
+}

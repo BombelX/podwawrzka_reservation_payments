@@ -3,10 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import React from "react";
 import CalendarComponent, { type CalendarHandle } from "./components/calendar";
-import { redirect } from "next/dist/server/api-utils";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import { Router } from "next/router";
 
 export default function Home() {
   const calendarRef = useRef<CalendarHandle | null>(null);
@@ -51,8 +49,8 @@ export default function Home() {
   }, [guestNumber, CalendarSelectedDate]);
 
   return (
-    <div className="flex p-5 flex-col">
-      <div className="font-sans bg-gray-100 flex flex-col  w-full h-full gap-3  items-center justify-items-center min-h-screen">
+    <div className="flex p-5 bg-[#FAF9F6] flex-col">
+      <div className="font-sans bg-[#FAF9F6] flex flex-col  w-full h-full gap-3  items-center justify-items-center min-h-screen">
         <div className="flex flex-col sm:flex-row">
           <div className="m-2 p-4 flex flex-col justify-right gap-2">
             <fieldset className="fieldset">
@@ -67,7 +65,7 @@ export default function Home() {
                 type="text"
               />
               <label>Adres e-mail:</label>
-              <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
+              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md px-3 py-2 flex items-center gap-2">
                 <svg
                   className="h-5 w-5 opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
@@ -85,6 +83,9 @@ export default function Home() {
                   </g>
                 </svg>
                 <input
+                  onChange={(e) =>
+                    setContactData({ ...contactData, email: e.target.value })
+                  }
                   type="email"
                   className="flex-1 bg-transparent outline-none rounded-md"
                   placeholder="email@gmail.com"
@@ -95,7 +96,7 @@ export default function Home() {
                 Wpisz poprawny adres e-mail
               </div>
               <label>Potwierdzenie adresu e-mail:</label>
-              <label className="input validator bg-white text-black border border-black rounded-md px-3 py-2 flex items-center gap-2">
+              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md px-3 py-2 flex items-center gap-2">
                 <svg
                   className="h-5 w-5 opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
@@ -120,7 +121,7 @@ export default function Home() {
                 />
               </label>
               <label>Numer telefonu:</label>
-              <label className="input validator bg-white text-black border border-black rounded-md">
+              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md">
                 <svg
                   className="h-[1em] opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
@@ -140,165 +141,168 @@ export default function Home() {
                   </g>
                 </svg>
                 <input
+                  onChange={(e) =>
+                    setContactData({ ...contactData, phone: e.target.value })
+                  }
                   type="tel"
                   className="tabular-nums"
                   required
                   placeholder="Nr. telefonu"
                   pattern="[0-9]*"
                   minLength={9}
-                  maxLength={11}
+                  maxLength={12}
                   title="Musi mieć 9 cyfr"
                 />
               </label>
               <p className="validator-hint">Musi miec 9 cyfr</p>
               <label>Czas przyjazdu:</label>
-              <select className="select bg-white text-black border-1 border-black rounded p-2 ">
+              <select className="select bg-white text-black border-1 border-[#3E3A37] rounded p-2 ">
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="null"
                 >
                   Niewiem
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="00:00 - 1:00"
                 >
                   00:00 - 1:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="1:00 - 2:00"
                 >
                   1:00 - 2:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="2:00 - 3:00"
                 >
                   2:00 - 3:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="3:00 - 4:00"
                 >
                   3:00 - 4:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="4:00 - 5:00"
                 >
                   4:00 - 5:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="5:00 - 6:00"
                 >
                   5:00 - 6:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="6:00 - 7:00"
                 >
                   6:00 - 7:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="7:00 - 8:00"
                 >
                   7:00 - 8:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="8:00 - 9:00"
                 >
                   8:00 - 9:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="9:00 - 10:00"
                 >
                   9:00 - 10:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="10:00 - 11:00"
                 >
                   10:00 - 11:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="11:00 - 12:00"
                 >
                   11:00 - 12:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="12:00 - 13:00"
                 >
                   12:00 - 13:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="13:00 - 14:00"
                 >
                   13:00 - 14:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="14:00 - 15:00"
                 >
                   14:00 - 15:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="15:00 - 16:00"
                 >
                   15:00 - 16:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="16:00 - 17:00"
                 >
                   16:00 - 17:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="17:00 - 18:00"
                 >
                   17:00 - 18:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="18:00 - 19:00"
                 >
                   18:00 - 19:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="19:00 - 20:00"
                 >
                   19:00 - 20:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="20:00 - 21:00"
                 >
                   20:00 - 21:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="21:00 - 22:00"
                 >
                   21:00 - 22:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="22:00 - 23:00"
                 >
                   22:00 - 23:00
                 </option>
                 <option
-                  className="hover:bg-black hover:text-white"
+                  className="hover:bg-[#3E3A37] hover:text-white"
                   value="23:00 - 00:00"
                 >
                   23:00 - 00:00
@@ -306,7 +310,7 @@ export default function Home() {
               </select>
               <label>Ile osób:</label>
               <select
-                className="select bg-white text-black border-1 border-black rounded p-2"
+                className="select bg-white text-black border-1 border-[#3E3A37] rounded p-2"
                 onChange={(e) => setGuestNumber(parseInt(e.target.value))}
                 defaultValue={"2"}
               >
@@ -381,67 +385,77 @@ export default function Home() {
                   setRuleAcceptation(!RuleAcceptation);
                 }}
                 type="checkbox"
-                className="checkbox checkbox-primary"
+                className="checkbox border-[#379237] checked:bg-[#379237] checked:border-[#379237]"
               ></input>
               <p>
                 Akceptuje{" "}
-                <a className="text-blue-500" href="www.google.com">
+                <a className="text-[#379237] hover:underline font-medium" href="/rules">
                   Regulamin
                 </a>
               </p>
             </div>
           </label>
           <button
-            disabled={!RuleAcceptation}
+            disabled={!RuleAcceptation || !CalendarSelectedDate}
             onClick={async () => {
-              const paymentLink = await fetch(
-                "http://46.224.13.142:3100/payments/begin",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    sid: uuidv4(),
-                    amount: price * 100,
-                    email: contactData.email,
-                    name: contactData.name,
-                    surname: contactData.surname,
-                    phone: contactData.phone,
-                    start: CalendarSelectedDate
-                      ? new Date(
-                          CalendarSelectedDate.start.year,
-                          CalendarSelectedDate.start.month,
-                          CalendarSelectedDate.start.day,
-                        )
-                      : null,
-                    end: CalendarSelectedDate
-                      ? new Date(
-                          CalendarSelectedDate.end.year,
-                          CalendarSelectedDate.end.month,
-                          CalendarSelectedDate.end.day,
-                        )
-                      : null,
-                    arrivalTime: 0,
-                  }),
-                },
-              );
-              const paymentLinkData = await paymentLink.json();
-              if (paymentLinkData.url) {
-                window.location.href = paymentLinkData.url;
+              if (!CalendarSelectedDate) {
+                alert("Proszę wybrać daty pobytu");
+                return;
               }
-
-              if (isPurchaseConfirmed == "") {
-                setIsPurchaseConfirmed("hidden");
-              } else {
-                setIsPurchaseConfirmed("");
+              
+              try {
+                const paymentLink = await fetch(
+                  "http://46.224.13.142:3100/payments/begin",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      sid: uuidv4(),
+                      amount: price * 100,
+                      email: contactData.email,
+                      name: contactData.name,
+                      surname: contactData.surname,
+                      phone: contactData.phone,
+                      start: new Date(
+                        CalendarSelectedDate.start.year,
+                        CalendarSelectedDate.start.month - 1,
+                        CalendarSelectedDate.start.day,
+                      ),
+                      end: new Date(
+                        CalendarSelectedDate.end.year,
+                        CalendarSelectedDate.end.month - 1,
+                        CalendarSelectedDate.end.day,
+                      ),
+                      arrivalTime: 0,
+                      guestNumber: guestNumber,
+                    }),
+                  },
+                );
+                
+                if (!paymentLink.ok) {
+                  throw new Error(`HTTP error! status: ${paymentLink.status}`);
+                }
+                
+                const paymentLinkData = await paymentLink.json();
+                if (paymentLinkData.url) {
+                  window.location.href = paymentLinkData.url;
+                } else {
+                  alert("Błąd: brak linku do płatności");
+                }
+              } catch (error) {
+                console.error("Payment error:", error);
+                alert("Błąd podczas inicjowania płatności");
               }
             }}
-            className="btn btn-outline disabled rounded-md bg-white hover:bg-green-600 hover:border-green-600 hover:scale-102 hover:text-white transition-all duration-500 text-black"
-          >
-            Zarezerwuj i przejdź do płatności
+            className="btn w-full border-none rounded-md py-3 font-bold uppercase tracking-wider transition-all duration-300 shadow-md 
+           bg-[#2F3B40] text-white 
+           hover:bg-[#379237] hover:scale-[1.02] 
+           disabled:bg-[#EFEBE0] disabled:text-[#BFAF9F] disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100"
+            >Zarezerwuj i przejdź do płatności
           </button>
-          <button
+          {/* <button
             className="btn btn-primary btn-outline hover:scale-102 transition-all duration-500"
             onClick={async () => {
               console.log("Wysylanie maila z przypomnieniem...");
@@ -475,6 +489,30 @@ export default function Home() {
           >
             Wyslij Maila z przypomnieniem
           </button>
+          <button
+            onClick={async () => {
+              console.log(contactData);
+              // return;
+
+              const response = await fetch(
+                "http://46.224.13.142:3100/notify/sendsms",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    phoneNumber: contactData.phone,
+                    message: `Dziękujemy za rezerwację w dniach od ${CalendarSelectedDate?.start.day}.${CalendarSelectedDate?.start.month}.${CalendarSelectedDate?.start.year} do ${CalendarSelectedDate?.end.day}.${CalendarSelectedDate?.end.month}.${CalendarSelectedDate?.end.year}. Czekamy na Was!`,
+                  }),
+                },
+              );
+            }}
+            className="btn btn-secoundary"
+          >
+            {" "}
+            Wyslij SMSa
+          </button> */}
           {/* <button onClick={callAlert} className="btn rounded-xl">
             Pobierz dane o rezerwacjach
           </button> */}

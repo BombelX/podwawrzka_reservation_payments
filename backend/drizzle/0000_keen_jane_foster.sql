@@ -18,3 +18,9 @@ CREATE TABLE `users` (
 	`email` text NOT NULL,
 	`phone` text NOT NULL
 );
+--> statement-breakpoint
+CREATE TABLE `special_prices` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`date` text NOT NULL,
+	`price` integer NOT NULL
+);

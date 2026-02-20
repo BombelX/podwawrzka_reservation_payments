@@ -177,7 +177,7 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
         }
     );
     const data = await resp.json();
-    console.log("elo benc");
+    console.log(data);
 
     return resp.status
     }

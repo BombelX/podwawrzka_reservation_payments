@@ -34,6 +34,7 @@ export default function Home() {
     weekendPriceIncrease: 0,
     holidayPriceIncrease: 0,
     extraPersonPrice: 0,
+    minimumDuration: 1,
     specialDays: [] as SpecialDay[],
     fixedHolidays: [] as string[],
     BannedDates: [] as never[],
@@ -44,6 +45,7 @@ export default function Home() {
   const [guestNumber, setGuestNumber] = useState<number>(2);
   const [price, setPrice] = useState<number>(0);
   const [isPhoneValid, setIsPhoneValid] = useState<boolean>(false);
+  const [isMinimumDurationMet, setIsMinimumDurationMet] = useState<boolean>(false);
   const [isCorrectEmail, setIsCorrectEmail] = useState<boolean>(false);
   const [isPurchaseConfirmed, setIsPurchaseConfirmed] =
     useState<string>("hidden");
@@ -64,6 +66,7 @@ export default function Home() {
     specialDays: SpecialDay[];
     fixedHolidays: string[];
     BannedDates: never[];
+    minimumDuration: number;
   };
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100";
@@ -98,6 +101,7 @@ export default function Home() {
           specialDays,
           fixedHolidays,
           BannedDates: Array.isArray(json.BannedDates) ? json.BannedDates : [],
+          minimumDuration: json.minimumDuration ?? 1,
         });
 
         setSettingsVersion((v) => v + 1);
@@ -471,8 +475,16 @@ export default function Home() {
               </h1>
               <h1 className="badge">
                 {CalendarSelectedDate &&
-                  `Liczba nocy: ${CalendarSelectedDate.nights}`}
+                  `Liczba nocy: ${CalendarSelectedDate.nights}`} 
               </h1>
+              {CalendarSelectedDate && CalendarSelectedDate.nights < typedSettings.minimumDuration && (
+                <div  className="badge badge-warning">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>Minimalna długość pobytu to {typedSettings.minimumDuration} {typedSettings.minimumDuration === 1 ? "noc" : "noce"}</span>
+                </div>
+              )}
               <h1 className="badge">
                 {CalendarSelectedDate && `Kwota do zapłaty: ${price} zł`}
               </h1>
@@ -529,7 +541,7 @@ export default function Home() {
 
           
           <button
-            disabled={!RuleAcceptation || !CalendarSelectedDate || !isPhoneValid || !isCorrectEmail}
+            disabled={!RuleAcceptation || !CalendarSelectedDate || !isPhoneValid || !isCorrectEmail || (CalendarSelectedDate && CalendarSelectedDate.nights < typedSettings.minimumDuration) || price <= 0 || contactData.name.trim() === ""}
             onClick={async () => {
               if (!CalendarSelectedDate) {
                 alert("Proszę wybrać daty pobytu");
@@ -586,7 +598,7 @@ export default function Home() {
            bg-[#2F3B40] text-white 
            hover:bg-[#379237] hover:scale-[1.02] 
            disabled:bg-[#EFEBE0] disabled:text-[#BFAF9F] disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100"
-            >Zarezerwuj i przejdź do płatnościW
+            >Zarezerwuj i przejdź do płatności
           </button>
           {
             !isCorrectEmail && (

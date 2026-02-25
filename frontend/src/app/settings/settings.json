@@ -3,6 +3,7 @@
     "weekendPriceIncrease": 100,
     "holidayPriceIncrease": 50,
     "extraPersonPrice": 20,
+    "minimumNights": 2,
     "fixedHolidays": [
         "1-1",
         "1-6",

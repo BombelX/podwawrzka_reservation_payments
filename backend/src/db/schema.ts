@@ -1,5 +1,5 @@
 import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { email, string } from "zod";
+import { date, email, string } from "zod";
 import { Logger, LoggerConfig } from "log4ts";
 export const reservations = sqliteTable("reservations",
     {
@@ -32,9 +32,13 @@ export const payments = sqliteTable("payments",{
 })
 
 export const mockP24Tokens = sqliteTable("mock_p24_tokens",{
-    id: int().primaryKey({autoIncrement:true}),
+    id: int().primaryKey({autoIncrement: true}),
     token: text().notNull(),
     status: int().notNull()
 })
 
-
+export const specialPrices = sqliteTable("special_prices",{
+    id: int().primaryKey({autoIncrement: true}),
+    date: text().notNull(),
+    price: int().notNull()
+})

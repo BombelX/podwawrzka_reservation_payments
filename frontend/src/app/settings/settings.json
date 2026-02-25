@@ -1,0 +1,31 @@
+{
+    "basePrice": 600,
+    "weekendPriceIncrease": 100,
+    "holidayPriceIncrease": 50,
+    "extraPersonPrice": 20,
+    "minimumNights": 2,
+    "fixedHolidays": [
+        "1-1",
+        "1-6",
+        "2-14",
+        "3-8",
+        "4-5",
+        "5-1",
+        "6-22",
+        "9-29",
+        "10-31",
+        "11-11",
+        "12-24",
+        "12-25",
+        "12-26"
+    ],
+    "specialDays": [
+        {
+            "date": "2026-12-31",
+            "price": 1000
+        }
+    ],
+    "BannedDates": [
+
+    ]
+}

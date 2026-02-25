@@ -9,6 +9,10 @@ import { sync3PartyReservations } from './routes/reservations';
 import cors from 'cors';
 import reservationsRouter from './routes/reservations';
 import paymentsRouter from './routes/payments';
+import settingsRouter from './routes/settings';
+// import emialsRouter from './routes/emails';
+// import SMSRouter from './routes/smsnotify';
+
 import { drizzle } from 'drizzle-orm/libsql';
 import { eq } from 'drizzle-orm';
 
@@ -23,6 +27,10 @@ app.use(express.json());
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/reservations", reservationsRouter);
 app.use("/payments", paymentsRouter);
+app.use("/settings", settingsRouter);
+// app.use("/emails", emialsRouter)
+// app.use("/notify", SMSRouter)
+
 
 
 

@@ -1,19 +1,25 @@
 "use client";
 import {
-  useEffect,
   useRef,
   useState,
   forwardRef,
   useImperativeHandle,
-  ForwardedRef,
 } from "react";
 import React from "react";
 import calendarColors from "../colors/Calendarcolors.json";
 
-
 interface ICalendarInterface {
   showInfo: () => void;
 }
+
+type CalendarSettings = {
+  basePrice: number;
+  weekendPriceIncrease: number;
+  holidayPriceIncrease: number;
+  extraPersonPrice: number;
+  fixedHolidays: string[];
+  specialDays: { date: string; price: number }[];
+};
 
 class CalendarElement implements ICalendarInterface {
   childrens: CalendarElement[] = [];
@@ -136,6 +142,7 @@ interface ApiReservation {
   start: string;
   end: string;
 }
+
 class Month extends CalendarElement {
   parentYear: Year;
   monthNumber: number;
@@ -148,7 +155,12 @@ class Month extends CalendarElement {
     parentYear.addChild(this);
   }
 
+  parseApiDate(s: string): Date {
+    return s.includes("T") ? new Date(s) : new Date(s + "T00:00:00");
+  }
+
   async fetchDaysAvailable() {
+    this.childrens.forEach((d) => d.setDisabled(false));
     const url = `http://46.224.13.142:3100/reservations/already?month=${this.monthNumber}&year=${this.parentYear.yearNumber}`;
     const resp = await fetch(url);
     const data: unknown = await resp.json();
@@ -159,23 +171,37 @@ class Month extends CalendarElement {
     const reservations: ApiReservation[] = data;
 
     reservations.forEach((reservation) => {
-      const startDate = new Date(reservation.start + "T00:00:00");
-      const endDate = new Date(reservation.end + "T00:00:00");
-      // let loop = new Date(startDate)
-      for (
-        let day = new Date(startDate);
-        day <= endDate;
-        day.setDate(day.getDate() + 1)
-      ) {
-        if (
-          day.getMonth() == this.monthNumber &&
-          day.getFullYear() == this.parentYear.yearNumber
-        ) {
-          const dayToDisable = this.childrens.find(
-            (c) => c.dayNumber === day.getDate(),
-          );
-          dayToDisable?.setDisabled(true);
+      const startDate = this.parseApiDate(reservation.start);
+      const endDate = this.parseApiDate(reservation.end);
+
+      let d = new Date(
+        Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          startDate.getUTCDate(),
+        ),
+      );
+
+      const end = new Date(
+        Date.UTC(
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          endDate.getUTCDate(),
+        ),
+      );
+
+      while (d < end) {
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth();
+        const dayNum = d.getUTCDate();
+
+        if (m === this.monthNumber && y === this.parentYear.yearNumber) {
+          this.childrens
+            .find((c) => c.dayNumber === dayNum)
+            ?.setDisabled(true);
         }
+
+        d.setUTCDate(d.getUTCDate() + 1);
       }
     });
     this.rerender && this.rerender();
@@ -197,38 +223,36 @@ class Month extends CalendarElement {
 }
 
 class Day extends CalendarElement {
-  fixedHolidays = [
-    "1-1", // Nowy Rok
-    "1-6", // Trzech Króli
-    "5-1", // Święto Pracy
-    "5-3", // Święto Konstytucji 3 Maja
-    "8-15", // Wniebowzięcie NMP
-    "11-1", // Wszystkich Świętych
-    "11-11", // Święto Niepodległości
-    "12-25", // Boże Narodzenie (pierwszy dzień)
-    "12-26", // Boże Narodzenie (drugi dzień)
-  ];
-  price: number = 600;
+  fixedHolidays: string[];
+  price: number;
   dayNumber: number;
   parentMonth: Month;
   day: number;
   selected: boolean = false;
-  hovers: string = calendarColors.normalDayHoverBackGround + " " + calendarColors.normalDayHoverTextColor;
+  hovers: string =
+    calendarColors.normalDayHoverBackGround +
+    " " +
+    calendarColors.normalDayHoverTextColor;
   style: string = "";
   backGroundColor: string = calendarColors.normalDayBackGround;
   isBetweenSelected: boolean = false;
   isDisabled: boolean = false;
   borderColor: string = calendarColors.normalDayBorderColor;
   textColor: string = calendarColors.normalDayTextColor;
-  constructor(parentMonth: Month, dayNumber: number) {
+
+  constructor(parentMonth: Month, dayNumber: number, settings: CalendarSettings) {
     super();
     this.parentMonth = parentMonth;
+    this.fixedHolidays = settings.fixedHolidays;
     this.dayNumber = dayNumber;
+    this.price = settings.basePrice;
     this.day = this.calcDayOfWeek();
+
     if (this.day == 6 || this.day == 7) {
-      this.price += 100;
+      this.price += settings.weekendPriceIncrease;
       this.textColor = calendarColors.weekendDayTextColor;
     }
+
     const today: Date = new Date();
     if (
       dayNumber == today.getDate() &&
@@ -238,19 +262,30 @@ class Day extends CalendarElement {
       this.backGroundColor = calendarColors.todayBackGround;
       this.textColor = calendarColors.todayTextColor;
     }
-    // if (dayNumber == 5) {
-    //   this.setDisabled(true);
-    // }
+
     if (
-      this.fixedHolidays.includes(
-        `${this.parentMonth.monthNumber + 1}-${dayNumber}`,
-      )
+      this.fixedHolidays.includes(`${String(this.parentMonth.monthNumber + 1).padStart(2, "0")}-${String(this.dayNumber).padStart(2, "0")}`)
     ) {
-      this.price += 50;
+      this.price += settings.holidayPriceIncrease;
+    }
+
+    if (settings.specialDays.some((d) => d.date === this.ymd())) {
+      const specialDay = settings.specialDays.find((d) => d.date === this.ymd());
+      if (specialDay) {
+        this.price = specialDay.price;
+      }
     }
 
     parentMonth.addChild(this);
   }
+
+  private ymd(): string {
+    const y = this.parentMonth.parentYear.yearNumber;
+    const m = String(this.parentMonth.monthNumber + 1).padStart(2, "0");
+    const d = String(this.dayNumber).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
   setSelected(value: boolean) {
     this.selected = value;
     if (value) {
@@ -283,6 +318,7 @@ class Day extends CalendarElement {
       }
     }
   }
+
   setDisabled(value: boolean) {
     this.isDisabled = value;
     if (value) {
@@ -291,6 +327,10 @@ class Day extends CalendarElement {
       this.backGroundColor = calendarColors.disabledDayBackGround;
       this.textColor = calendarColors.disabledDayTextColor;
     } else {
+      this.hovers =
+        calendarColors.normalDayHoverBackGround +
+        " " +
+        calendarColors.normalDayHoverTextColor;
       this.borderColor = calendarColors.normalDayBorderColor;
       this.backGroundColor = calendarColors.normalDayBackGround;
       if (this.day == 6 || this.day == 7) {
@@ -307,6 +347,12 @@ class Day extends CalendarElement {
       ) {
         this.backGroundColor = calendarColors.todayBackGround;
         this.textColor = calendarColors.todayTextColor;
+      }
+      if (this.isBetweenSelected) {
+        this.setIsBetweenSelected(true);
+      }
+      if (this.selected) {
+        this.setSelected(true);
       }
     }
   }
@@ -340,9 +386,10 @@ class Day extends CalendarElement {
       }
     }
   }
+
   setIsBetweenSelectedEdge(value: boolean, isStart: boolean) {
     if (value) {
-      this.borderColor = "border-1 "+ calendarColors.selectedDayBorderColor;
+      this.borderColor = "border-1 " + calendarColors.selectedDayBorderColor;
       this.backGroundColor = calendarColors.selectedDayBackGround;
       this.textColor = calendarColors.selectedDayTextColor;
       this.style = "ring-1 ring-[#6b9e8f]";
@@ -367,6 +414,7 @@ class Day extends CalendarElement {
       }
     }
   }
+
   calcDayOfWeek(): number {
     const date = new Date(
       this.parentMonth.parentYear.yearNumber,
@@ -380,6 +428,7 @@ class Day extends CalendarElement {
     }
     return dayOfWeek;
   }
+
   displayed: boolean = false;
   showInfo() {
     console.log(
@@ -393,46 +442,36 @@ class Day extends CalendarElement {
   }
 }
 
-function generateDay(month: Month, dayNumber: number): Day {
-  const day = new Day(month, dayNumber);
-  return day;
+function generateDay(month: Month, dayNumber: number, settings: CalendarSettings): Day {
+  return new Day(month, dayNumber, settings);
 }
 
-function generateMonth(year: Year, monthNumber: number): Month {
+function generateMonth(year: Year, monthNumber: number, settings: CalendarSettings): Month {
   const month = new Month(year, monthNumber);
-  let days: number = daysInMonth[monthNumber];
-  if (year.yearNumber % 4 == 0 && monthNumber == 2) {
-    days += 1;
-  }
 
-  for (let i = 1; i <= days; i++) {
-    generateDay(month, i);
-  }
+  let days: number = daysInMonth[monthNumber];
+  const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+  if (monthNumber === 1 && isLeap(year.yearNumber)) days += 1;
+
+  for (let i = 1; i <= days; i++) generateDay(month, i, settings);
 
   return month;
 }
 
-function generateYear(calendar: Calendar, yearNumber: number): Year {
+function generateYear(calendar: Calendar, yearNumber: number, settings: CalendarSettings): Year {
   const year = new Year(yearNumber, calendar);
-  for (let i = 0; i < 12; i++) {
-    generateMonth(year, i);
-  }
+  for (let i = 0; i < 12; i++) generateMonth(year, i, settings);
   return year;
 }
+
 type CalendarDate = {
-  start: {
-    year: number;
-    month: number;
-    day: number;
-  };
-  end: {
-    year: number;
-    month: number;
-    day: number;
-  };
+  start: { year: number; month: number; day: number };
+  end: { year: number; month: number; day: number };
   nights: number;
 };
+
 type CalendarProps = {
+  settings: CalendarSettings;
   yearNumber?: number;
   monthNumber?: number;
   calendarSetter?: (value: CalendarDate | null) => void;
@@ -444,14 +483,16 @@ export interface CalendarHandle {
 }
 
 const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
-  ({ yearNumber, monthNumber, calendarSetter, people = 1 }, ref) => {
+  ({ settings, yearNumber, monthNumber, calendarSetter, people = 1 }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const calendarRef = useRef<Calendar | null>(null);
-    const [tick, setTick] = useState(0);
+
+    const [, setTick] = useState(0);
     const forceRerender = () => setTick((v) => v + 1);
+
     if (!calendarRef.current) {
       const cal = new Calendar();
-      const year = generateYear(cal, yearNumber ?? new Date().getFullYear());
+      const year = generateYear(cal, yearNumber ?? new Date().getFullYear(), settings);
       const month = year.childrens[monthNumber ?? new Date().getMonth()];
       year.activate();
       month.activate();
@@ -461,56 +502,41 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
 
     const calendar = calendarRef.current!;
 
-    const [activeMonth, setActiveMonth] = useState<Month>(
-      calendar.getActiveMonth(),
-    );
-    const [offsetDays, setOffsetDays] = useState<number>(
-      activeMonth.childrens[0].day,
-    );
-    const [firstSelectedDate, setFirstSelectedDate] = useState<Day | null>(
-      null,
-    );
-    const [secondSelectedDate, setSecondSelectedDate] = useState<Day | null>(
-      null,
-    );
-    const [firstLastHoveredDay, setFirstLastHoveredDay] = useState<Day | null>(
-      null,
-    );
-    const [secondLastHoveredDay, setSecondLastHoveredDay] =
-      useState<Day | null>(null);
-    const [firstDisabledDate, setFirstDisabledDate] = useState<Day | null>(
-      null,
-    );
+    const [activeMonth, setActiveMonth] = useState<Month>(calendar.getActiveMonth());
+    const [offsetDays, setOffsetDays] = useState<number>(activeMonth.childrens[0].day);
+    const [firstSelectedDate, setFirstSelectedDate] = useState<Day | null>(null);
+    const [secondSelectedDate, setSecondSelectedDate] = useState<Day | null>(null);
+    const [firstLastHoveredDay, setFirstLastHoveredDay] = useState<Day | null>(null);
+    const [secondLastHoveredDay, setSecondLastHoveredDay] = useState<Day | null>(null);
+    const [firstDisabledDate, setFirstDisabledDate] = useState<Day | null>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
       setOffsetDays(activeMonth.childrens[0].day);
     }, [activeMonth]);
 
     function handlePrev() {
       if (activeMonth.monthNumber > 0) {
-        const target: Month =
-          activeMonth.parentYear.childrens[activeMonth.monthNumber - 1];
+        const target: Month = activeMonth.parentYear.childrens[activeMonth.monthNumber - 1];
         target.activate();
         setActiveMonth(target);
       } else {
         const targetYearNumber = activeMonth.parentYear.yearNumber - 1;
-        if (
-          !calendar.childrens.find((y) => y.yearNumber === targetYearNumber)
-        ) {
-          const targetYear = generateYear(calendar, targetYearNumber);
+        if (!calendar.childrens.find((y) => y.yearNumber === targetYearNumber)) {
+          const targetYear = generateYear(calendar, targetYearNumber, settings);
           targetYear.activate();
           const targetMonth = targetYear.childrens[11];
           targetMonth.activate();
           setActiveMonth(targetMonth);
         } else {
-          const targetYear = calendar.childrens.find(
-            (y) => y.yearNumber === targetYearNumber,
-          );
+          const targetYear = calendar.childrens.find((y) => y.yearNumber === targetYearNumber);
           const targetMonth = targetYear!.childrens[11];
+          targetYear!.activate();
+          targetMonth.activate();
           setActiveMonth(targetMonth);
         }
       }
     }
+
     function handleDayHover(day: Day) {
       if (day.isDisabled) {
         if (
@@ -519,14 +545,12 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
           secondSelectedDate === null &&
           isDateBefore({ day1: firstSelectedDate, day2: day })
         ) {
+          clearHoveredRangePreview();
           setFirstDisabledDate(day);
         }
         return;
       }
-      if (
-        firstDisabledDate !== null &&
-        isDateBefore({ day1: day, day2: firstDisabledDate })
-      ) {
+      if (firstDisabledDate !== null && isDateBefore({ day1: day, day2: firstDisabledDate })) {
         setFirstDisabledDate(null);
       }
       if (firstDisabledDate !== null || secondSelectedDate !== null) {
@@ -539,11 +563,8 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
             const secondYMD: YMD = dayToYMD(secondLastHoveredDay);
             iterateBeetweenDatesYMD(firstYMD, secondYMD, false);
           }
-          iterateBeetweenDatesYMD(
-            dayToYMD(firstSelectedDate),
-            dayToYMD(day),
-            true,
-          );
+          iterateBeetweenDatesYMD(dayToYMD(firstSelectedDate), dayToYMD(day), true);
+          firstSelectedDate.setSelected(true);
           setFirstLastHoveredDay(firstSelectedDate);
           setSecondLastHoveredDay(day);
         } else {
@@ -559,58 +580,35 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
       }
     }
 
-    type DateOperationProp = {
-      day1: Day;
-      day2: Day;
-    };
+    type DateOperationProp = { day1: Day; day2: Day };
 
     function isDateBefore({ day1, day2 }: DateOperationProp): boolean {
-      if (
-        day1.parentMonth.parentYear.yearNumber ==
-        day2.parentMonth.parentYear.yearNumber
-      ) {
+      if (day1.parentMonth.parentYear.yearNumber == day2.parentMonth.parentYear.yearNumber) {
         if (day1.parentMonth == day2.parentMonth) {
           return day1.dayNumber < day2.dayNumber;
         } else {
           return day1.parentMonth.monthNumber < day2.parentMonth.monthNumber;
         }
       } else {
-        if (
-          day1.parentMonth.parentYear.yearNumber <
-          day2.parentMonth.parentYear.yearNumber
-        ) {
-          return true;
-        } else {
-          return false;
-        }
+        return day1.parentMonth.parentYear.yearNumber < day2.parentMonth.parentYear.yearNumber;
       }
     }
 
-    function iterateBeetweenDatesYMD(
-      date1: YMD,
-      date2: YMD,
-      activate: boolean,
-    ): boolean {
+    function iterateBeetweenDatesYMD(date1: YMD, date2: YMD, activate: boolean): boolean {
       for (let year: number = date1.y; year <= date2.y; year++) {
         const startMonth: number = year == date1.y ? date1.m : 0;
         const endMonth: number = year == date2.y ? date2.m : 11;
         for (let month: number = startMonth; month <= endMonth; month++) {
-          const startDay: number =
-            date1.y == year && date1.m == month ? date1.d : 0;
+          const startDay: number = date1.y == year && date1.m == month ? date1.d : 0;
           const endDay: number =
             date2.y == year && date2.m == month ? date2.d : daysInMonth[month];
           for (let day: number = startDay; day <= endDay; day++) {
-            const targetYear = calendar.childrens.find(
-              (y) => y.yearNumber == year,
-            );
-            const targetMonth = targetYear?.childrens.find(
-              (m) => m.monthNumber == month,
-            );
-            const targetDay = targetMonth?.childrens.find(
-              (d) => d.dayNumber == day,
-            );
+            const targetYear = calendar.childrens.find((y) => y.yearNumber == year);
+            const targetMonth = targetYear?.childrens.find((m) => m.monthNumber == month);
+            const targetDay = targetMonth?.childrens.find((d) => d.dayNumber == day);
             if (targetDay?.isDisabled && activate) {
               setFirstDisabledDate(targetDay);
+              iterateBeetweenDatesYMD(date1, date2, false);
               return false;
             }
             if (targetDay) {
@@ -620,6 +618,20 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
         }
       }
       return true;
+    }
+
+    function clearHoveredRangePreview() {
+      if (secondSelectedDate !== null) return;
+      if (firstLastHoveredDay && secondLastHoveredDay) {
+        iterateBeetweenDatesYMD(
+          dayToYMD(firstLastHoveredDay),
+          dayToYMD(secondLastHoveredDay),
+          false,
+        );
+        setFirstLastHoveredDay(null);
+        setSecondLastHoveredDay(null);
+        if (firstSelectedDate) firstSelectedDate.setSelected(true);
+      }
     }
 
     function DateDifferenceInNights(start: YMD, end: YMD): number {
@@ -654,10 +666,22 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
       }
       return true;
     }
+
     function handleDayClick(day: Day) {
-      if (day.isDisabled) {
-        return;
-      }
+      const now = new Date();
+
+      const dayDate = new Date(
+        day.parentMonth.parentYear.yearNumber,
+        day.parentMonth.monthNumber,
+        day.dayNumber,
+      );
+      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (dayDate < todayDate) return;
+
+      if (day.isDisabled) return;
+
+      clearHoveredRangePreview();
+
       if (
         firstSelectedDate !== null &&
         firstDisabledDate !== null &&
@@ -671,31 +695,23 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
           setFirstSelectedDate(day);
           day.setSelected(true);
           setFirstDisabledDate(null);
-          if (calendarSetter) {
-            calendarSetter(null);
-          }
+          calendarSetter?.(null);
           return;
         }
       }
+
       if (firstSelectedDate !== null) {
         if (firstSelectedDate == day) {
-          setFirstSelectedDate(null); // reset if clicked on same date
+          setFirstSelectedDate(null);
           day.setSelected(false);
           if (secondSelectedDate !== null) {
             secondSelectedDate.setSelected(false);
-            beetweenSelected(
-              firstSelectedDate,
-              day,
-              firstSelectedDate,
-              secondSelectedDate,
-            );
+            beetweenSelected(firstSelectedDate, day, firstSelectedDate, secondSelectedDate);
             setSecondSelectedDate(null);
           }
           day.setSelected(false);
           setFirstDisabledDate(null);
-          if (calendarSetter) {
-            calendarSetter(null);
-          }
+          calendarSetter?.(null);
           return;
         } else {
           if (isDateBefore({ day1: firstSelectedDate, day2: day })) {
@@ -713,27 +729,12 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
               setSecondSelectedDate(day);
               const start: YMD = dayToYMD(firstSelectedDate);
               const end: YMD = dayToYMD(day);
-              if (calendarSetter) {
-                calendarSetter({
-                  start: {
-                    year: start.y,
-                    month: start.m,
-                    day: start.d,
-                  },
-                  end: {
-                    year: end.y,
-                    month: end.m,
-                    day: end.d,
-                  },
-                  nights: DateDifferenceInNights(start, end),
-                  // price calculation will be added here
-                });
-              }
+              calendarSetter?.({
+                start: { year: start.y, month: start.m, day: start.d },
+                end: { year: end.y, month: end.m, day: end.d },
+                nights: DateDifferenceInNights(start, end),
+              });
             } else {
-              // if (oldSecondSelectedDate !== null){
-              //     oldSecondSelectedDate.setSelected(true);
-              //     beetweenSelected(firstSelectedDate, oldSecondSelectedDate, firstSelectedDate, day);
-              // }
               if (oldSecondSelectedDate !== null) {
                 beetweenSelected(null, null, firstSelectedDate, day);
               }
@@ -744,7 +745,6 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
               day.setSelected(true);
             }
           } else {
-            console.log("dupa");
             firstSelectedDate.setSelected(false);
             if (secondSelectedDate !== null) {
               secondSelectedDate.setSelected(false);
@@ -753,9 +753,7 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
             beetweenSelected(null, null, firstSelectedDate, secondSelectedDate);
             setFirstSelectedDate(day);
             day.setSelected(true);
-            if (calendarSetter) {
-              calendarSetter(null);
-            }
+            calendarSetter?.(null);
           }
         }
       } else {
@@ -763,11 +761,8 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
         day.setSelected(true);
       }
     }
-    type YMD = {
-      y: number;
-      m: number;
-      d: number;
-    };
+
+    type YMD = { y: number; m: number; d: number };
 
     function dayToYMD(day: Day): YMD {
       return {
@@ -779,34 +774,34 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
 
     function handleNext() {
       if (activeMonth.monthNumber < 11) {
-        const target: Month =
-          activeMonth.parentYear.childrens[activeMonth.monthNumber + 1];
+        const target: Month = activeMonth.parentYear.childrens[activeMonth.monthNumber + 1];
         target.activate();
         setActiveMonth(target);
       } else {
         const targetYearNumber: number = activeMonth.parentYear.yearNumber + 1;
         let targetMonth: Month;
-        if (
-          !calendar.childrens.find((y) => y.yearNumber === targetYearNumber)
-        ) {
-          const targetYear: Year = generateYear(calendar, targetYearNumber);
+
+        if (!calendar.childrens.find((y) => y.yearNumber === targetYearNumber)) {
+          const targetYear: Year = generateYear(calendar, targetYearNumber, settings);
           targetYear.activate();
           targetMonth = targetYear.childrens[0];
         } else {
-          const targetYear = calendar.childrens.find(
-            (y) => y.yearNumber === targetYearNumber,
-          );
+          const targetYear = calendar.childrens.find((y) => y.yearNumber === targetYearNumber);
           targetYear!.activate();
           targetMonth = targetYear!.childrens[0];
         }
+
         targetMonth.activate();
         setActiveMonth(targetMonth);
       }
     }
 
-    useImperativeHandle(ref, () => {
-      return { checkAvaibility: () => activeMonth.fetchDaysAvailable() };
-    }, []);
+    useImperativeHandle(
+      ref,
+      () => ({ checkAvaibility: () => activeMonth.fetchDaysAvailable() }),
+      [activeMonth],
+    );
+
     return (
       <div
         ref={containerRef}
@@ -815,23 +810,60 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
         <div className="flex items-center justify-between gap-4">
           <button
             onClick={handlePrev}
-            className={"btn btn-ghost text-xs rounded-full " + calendarColors.arrowsBackGroundColor + " hover:" + calendarColors.arrowsHoverBackGroundColor + " " + calendarColors.arrowsBorderColor + " " + calendarColors.arrowsTextColor}
+            className={
+              "btn btn-ghost text-xs rounded-full " +
+              calendarColors.arrowsBackGroundColor +
+              " hover:" +
+              calendarColors.arrowsHoverBackGroundColor +
+              " " +
+              calendarColors.arrowsBorderColor +
+              " " +
+              calendarColors.arrowsTextColor
+            }
           >
             &larr;
           </button>
 
           <div className="flex flex-col items-center">
-            <div className={"badge " + calendarColors.badgesBackGroundColor + " " + calendarColors.badgesTextColor + " " + calendarColors.badgesBorderColor}>
+            <div
+              className={
+                "badge " +
+                calendarColors.badgesBackGroundColor +
+                " " +
+                calendarColors.badgesTextColor +
+                " " +
+                calendarColors.badgesBorderColor
+              }
+            >
               {activeMonth.parentYear.yearNumber}
             </div>
-            <div className={"badge " + calendarColors.badgesBackGroundColor + " " + calendarColors.badgesTextColor + " " + calendarColors.badgesBorderColor + " mt-1"}>
+            <div
+              className={
+                "badge " +
+                calendarColors.badgesBackGroundColor +
+                " " +
+                calendarColors.badgesTextColor +
+                " " +
+                calendarColors.badgesBorderColor +
+                " mt-1"
+              }
+            >
               {monthNames[activeMonth.monthNumber]}
             </div>
           </div>
 
           <button
             onClick={handleNext}
-            className={"btn btn-ghost text-xs rounded-full " + calendarColors.arrowsBackGroundColor + " hover:" + calendarColors.arrowsHoverBackGroundColor + " " + calendarColors.arrowsBorderColor + " " + calendarColors.arrowsTextColor}
+            className={
+              "btn btn-ghost text-xs rounded-full " +
+              calendarColors.arrowsBackGroundColor +
+              " hover:" +
+              calendarColors.arrowsHoverBackGroundColor +
+              " " +
+              calendarColors.arrowsBorderColor +
+              " " +
+              calendarColors.arrowsTextColor
+            }
           >
             &rarr;
           </button>
@@ -841,7 +873,6 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
           className="
         mt-3 grid grid-cols-7 gap-x-2 gap-y-3
         auto-rows-[minmax(2.6rem,_auto)]
-
       "
         >
           {["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"].map((d, i) => (
@@ -878,15 +909,13 @@ const CalendarComponent = forwardRef<CalendarHandle, CalendarProps>(
             ${day.hovers} 
             ${day.style} 
             ${day.backGroundColor} ${day.textColor} ${day.borderColor}
-            
-            
             transition-all
           `}
             >
               <div>
                 <span className="text-base pt-1">{day.dayNumber}</span>
                 <p className="text-[9px] p-0 m-0">
-                  {day.price + (people - 1) * 20}
+                  {day.price + (people - 1) * settings.extraPersonPrice}
                 </p>
               </div>
             </button>

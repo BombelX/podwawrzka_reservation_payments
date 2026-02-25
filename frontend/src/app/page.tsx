@@ -1,9 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import React from "react";
 import CalendarComponent, { type CalendarHandle } from "./components/calendar";
-import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 export default function Home() {
@@ -22,31 +19,135 @@ export default function Home() {
     };
     nights: number;
   };
+  
+  type FixedHoliday = {
+    month: number;
+    day: number;
+  };
+  
+  type SpecialDay = {
+    date: string;
+    price: number;
+  };
+  const [settings,setSettings] = useState({
+    basePrice: 0,
+    weekendPriceIncrease: 0,
+    holidayPriceIncrease: 0,
+    extraPersonPrice: 0,
+    specialDays: [] as SpecialDay[],
+    fixedHolidays: [] as string[],
+    BannedDates: [] as never[],
+  });
   const [RuleAcceptation, setRuleAcceptation] = useState(false);
   const [CalendarSelectedDate, setCalendarSelectedDate] =
     useState<CalendarDate | null>(null);
   const [guestNumber, setGuestNumber] = useState<number>(2);
   const [price, setPrice] = useState<number>(0);
+  const [isPhoneValid, setIsPhoneValid] = useState<boolean>(false);
+  const [isCorrectEmail, setIsCorrectEmail] = useState<boolean>(false);
   const [isPurchaseConfirmed, setIsPurchaseConfirmed] =
     useState<string>("hidden");
   const [contactData, setContactData] = useState({
-    name: "test",
+    name: "",
     surname: "test",
     email: "test@test.com",
     phone: "123456789",
+    arrivalTime: "Niewiem",
   });
-  function callAlert() {
-    calendarRef.current?.checkAvaibility();
-  }
+  const [secoundEmail, setSecoundEmail] = useState<string>("");
+  const now = new Date();
+  const typedSettings = settings as {
+    basePrice: number;
+    weekendPriceIncrease: number;
+    holidayPriceIncrease: number;
+    extraPersonPrice: number;
+    specialDays: SpecialDay[];
+    fixedHolidays: string[];
+    BannedDates: never[];
+  };
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100";
+
+  const [settingsVersion, setSettingsVersion] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch(`${API_URL}/settings`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          throw new Error(`GET /settings failed: ${res.status}`);
+        }
+
+        const json = await res.json();
+        if (cancelled) return;
+
+        const fixedHolidays = Array.isArray(json.fixedHolidays) ? json.fixedHolidays : [];
+        const specialDays = Array.isArray(json.specialDays) ? json.specialDays : [];
+
+        setSettings({
+          basePrice: json.basePrice ?? 0,
+          weekendPriceIncrease: json.weekendPriceIncrease ?? 0,
+          holidayPriceIncrease: json.holidayPriceIncrease ?? 0,
+          extraPersonPrice: json.extraPersonPrice ?? 0,
+          specialDays,
+          fixedHolidays,
+          BannedDates: Array.isArray(json.BannedDates) ? json.BannedDates : [],
+        });
+
+        setSettingsVersion((v) => v + 1);
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      }
+    };
+
+    fetchSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [API_URL]);
 
   useEffect(() => {
     if (CalendarSelectedDate !== null) {
+
+      const start = new Date(CalendarSelectedDate.start.year, CalendarSelectedDate.start.month, CalendarSelectedDate.start.day);
+      const end = new Date(CalendarSelectedDate.end.year, CalendarSelectedDate.end.month, CalendarSelectedDate.end.day);
+      let price = 0;
+      for (let day = start; day < end; day.setDate(day.getDate() + 1)) {
+        const month = String(day.getMonth() + 1).padStart(2, "0");
+        const dayOfMonth = String(day.getDate()).padStart(2, "0");
+        const dateKey = `${day.getFullYear()}-${month}-${dayOfMonth}`;
+
+        if (typedSettings.specialDays.some(d => d.date === dateKey)) {
+          const specialDay = typedSettings.specialDays.find(d => d.date === dateKey);
+          if (specialDay) {
+            price += specialDay.price;
+            continue;
+          }
+        }
+
+        if (day.getDay() === 0 || day.getDay() === 6) {
+          price += typedSettings.weekendPriceIncrease + typedSettings.basePrice;
+        } else {
+          price += typedSettings.basePrice;
+          const holidayKey = `${day.getMonth() + 1}-${day.getDate()}`;
+          if (typedSettings.fixedHolidays.some(d => d === holidayKey)) {
+            price += typedSettings.holidayPriceIncrease;
+          }
+        }
+      }
+
       setPrice(
-        guestNumber * 20 * CalendarSelectedDate.nights +
-          CalendarSelectedDate.nights * 700,
+        guestNumber * typedSettings.extraPersonPrice * CalendarSelectedDate.nights +
+          price,
       );
     }
-  }, [guestNumber, CalendarSelectedDate]);
+  }, [guestNumber, CalendarSelectedDate, settingsVersion]);
 
   return (
     <div className="flex p-5 bg-[#FAF9F6] flex-col">
@@ -54,7 +155,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row">
           <div className="m-2 p-4 flex flex-col justify-right gap-2">
             <fieldset className="fieldset">
-              <legend className="fieldset-legend">Dane kontaktowe</legend>
+              <legend className="fieldset-legend text-[#FAF9F6]">Dane kontaktowe</legend>
               <label>Imię i nazwisko</label>
               <input
                 value={contactData.name}
@@ -63,6 +164,8 @@ export default function Home() {
                 }
                 className="border-1 input bg-white text-black border-black rounded"
                 type="text"
+                placeholder="Jan Kowalski"
+                required
               />
               <label>Adres e-mail:</label>
               <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md px-3 py-2 flex items-center gap-2">
@@ -83,8 +186,18 @@ export default function Home() {
                   </g>
                 </svg>
                 <input
-                  onChange={(e) =>
+                  onChange={(e) =>{
                     setContactData({ ...contactData, email: e.target.value })
+                    if (e.target.value === secoundEmail) {
+                      setIsCorrectEmail(true);
+                    } else {
+                      setIsCorrectEmail(false);
+                    }
+                    if (e.target.value === "") {
+                      setIsCorrectEmail(false);
+                    }
+                  }
+
                   }
                   type="email"
                   className="flex-1 bg-transparent outline-none rounded-md"
@@ -114,6 +227,16 @@ export default function Home() {
                   </g>
                 </svg>
                 <input
+                  onChange={(e) => {setSecoundEmail(e.target.value)
+                    if(e.target.value === contactData.email) {
+                      setIsCorrectEmail(true);
+                    } else {
+                      setIsCorrectEmail(false);
+                    }
+                    if (e.target.value === "") {
+                      setIsCorrectEmail(false);
+                    }
+                  }}
                   type="email"
                   className="flex-1 bg-transparent outline-none rounded-md"
                   placeholder="email@gmail.com"
@@ -121,55 +244,57 @@ export default function Home() {
                 />
               </label>
               <label>Numer telefonu:</label>
-              <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md">
+                <label className="input validator bg-white text-black border border-[#3E3A37] rounded-md">
                 <svg
                   className="h-[1em] opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 16 16"
                 >
                   <g fill="none">
-                    <path
-                      d="M7.25 11.5C6.83579 11.5 6.5 11.8358 6.5 12.25C6.5 12.6642 6.83579 13 7.25 13H8.75C9.16421 13 9.5 12.6642 9.5 12.25C9.5 11.8358 9.16421 11.5 8.75 11.5H7.25Z"
-                      fill="currentColor"
-                    ></path>
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M6 1C4.61929 1 3.5 2.11929 3.5 3.5V12.5C3.5 13.8807 4.61929 15 6 15H10C11.3807 15 12.5 13.8807 12.5 12.5V3.5C12.5 2.11929 11.3807 1 10 1H6ZM10 2.5H9.5V3C9.5 3.27614 9.27614 3.5 9 3.5H7C6.72386 3.5 6.5 3.27614 6.5 3V2.5H6C5.44771 2.5 5 2.94772 5 3.5V12.5C5 13.0523 5.44772 13.5 6 13.5H10C10.5523 13.5 11 13.0523 11 12.5V3.5C11 2.94772 10.5523 2.5 10 2.5Z"
-                      fill="currentColor"
-                    ></path>
+                  <path
+                    d="M7.25 11.5C6.83579 11.5 6.5 11.8358 6.5 12.25C6.5 12.6642 6.83579 13 7.25 13H8.75C9.16421 13 9.5 12.6642 9.5 12.25C9.5 11.8358 9.16421 11.5 8.75 11.5H7.25Z"
+                    fill="currentColor"
+                  ></path>
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M6 1C4.61929 1 3.5 2.11929 3.5 3.5V12.5C3.5 13.8807 4.61929 15 6 15H10C11.3807 15 12.5 13.8807 12.5 12.5V3.5C12.5 2.11929 11.3807 1 10 1H6ZM10 2.5H9.5V3C9.5 3.27614 9.27614 3.5 9 3.5H7C6.72386 3.5 6.5 3.27614 6.5 3V2.5H6C5.44771 2.5 5 2.94772 5 3.5V12.5C5 13.0523 5.44772 13.5 6 13.5H10C10.5523 13.5 11 13.0523 11 12.5V3.5C11 2.94772 10.5523 2.5 10 2.5Z"
+                    fill="currentColor"
+                  ></path>
                   </g>
                 </svg>
                 <input
-                  onChange={(e) =>
+                  onChange={(e) =>{
                     setContactData({ ...contactData, phone: e.target.value })
+                    setIsPhoneValid(e.target.value.match(/^\+48\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/) !== null);
+                  }
                   }
                   type="tel"
                   className="tabular-nums"
                   required
-                  placeholder="Nr. telefonu"
-                  pattern="[0-9]*"
-                  minLength={9}
-                  maxLength={12}
-                  title="Musi mieć 9 cyfr"
+                  placeholder="+48 123 456 789"
+                  pattern="^\+48\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$"
+                  minLength={12}
+                  maxLength={15}
+                  title="Format: +48 123 456 789"
                 />
-              </label>
+                </label>
               <p className="validator-hint">Musi miec 9 cyfr</p>
               <label>Czas przyjazdu:</label>
-              <select className="select bg-white text-black border-1 border-[#3E3A37] rounded p-2 ">
+              <select onChange={(e) => setContactData({...contactData, arrivalTime: e.target.value})} className="select bg-white text-black border-1 border-[#3E3A37] rounded p-2 ">
                 <option
                   className="hover:bg-[#3E3A37] hover:text-white"
-                  value="null"
+                  value="Niewiem"
                 >
                   Niewiem
                 </option>
-                <option
+                {/* <option
                   className="hover:bg-[#3E3A37] hover:text-white"
                   value="00:00 - 1:00"
                 >
                   00:00 - 1:00
-                </option>
-                <option
+                </option> */}
+                {/* <option
                   className="hover:bg-[#3E3A37] hover:text-white"
                   value="1:00 - 2:00"
                 >
@@ -252,7 +377,7 @@ export default function Home() {
                   value="14:00 - 15:00"
                 >
                   14:00 - 15:00
-                </option>
+                </option> */}
                 <option
                   className="hover:bg-[#3E3A37] hover:text-white"
                   value="15:00 - 16:00"
@@ -326,18 +451,23 @@ export default function Home() {
 
           <div>
             <div className="flex gap-2 mt-13">
-              <CalendarComponent
-                ref={calendarRef}
-                yearNumber={2025}
-                monthNumber={9}
-                calendarSetter={setCalendarSelectedDate}
-                people={guestNumber}
-              />
+              {settingsVersion > 0 ? (
+                <CalendarComponent
+                  ref={calendarRef}
+                  settings={typedSettings}
+                  yearNumber={now.getFullYear()}
+                  monthNumber={now.getMonth()}
+                  calendarSetter={setCalendarSelectedDate}
+                  people={guestNumber}
+                />
+              ) : (
+                <div className="p-4">Ładowanie...</div>
+              )}
             </div>
             <div className="flex flex-col gap-1 p-2">
               <h1 className="badge">
                 {CalendarSelectedDate &&
-                  `Wybrane daty: ${CalendarSelectedDate.start.day}.${CalendarSelectedDate.start.month}.${CalendarSelectedDate.start.year} - ${CalendarSelectedDate.end.day}.${CalendarSelectedDate.end.month}.${CalendarSelectedDate.end.year}`}
+                  `Wybrane daty: ${CalendarSelectedDate.start.day}.${CalendarSelectedDate.start.month+1}.${CalendarSelectedDate.start.year} - ${CalendarSelectedDate.end.day}.${CalendarSelectedDate.end.month+1}.${CalendarSelectedDate.end.year}`}
               </h1>
               <h1 className="badge">
                 {CalendarSelectedDate &&
@@ -368,7 +498,7 @@ export default function Home() {
                       guestName: contactData.name,
                       guestSurname: contactData.surname,
                       guestEmail: contactData.email,
-                      arrivalTime: "",
+                      arrivalTime: contactData.arrivalTime,
                       nights: CalendarSelectedDate.nights,
                       price: price,
                       how_many_people: guestNumber,
@@ -395,8 +525,11 @@ export default function Home() {
               </p>
             </div>
           </label>
+          
+
+          
           <button
-            disabled={!RuleAcceptation || !CalendarSelectedDate}
+            disabled={!RuleAcceptation || !CalendarSelectedDate || !isPhoneValid || !isCorrectEmail}
             onClick={async () => {
               if (!CalendarSelectedDate) {
                 alert("Proszę wybrać daty pobytu");
@@ -420,15 +553,15 @@ export default function Home() {
                       phone: contactData.phone,
                       start: new Date(
                         CalendarSelectedDate.start.year,
-                        CalendarSelectedDate.start.month - 1,
+                        CalendarSelectedDate.start.month ,
                         CalendarSelectedDate.start.day,
                       ),
                       end: new Date(
                         CalendarSelectedDate.end.year,
-                        CalendarSelectedDate.end.month - 1,
+                        CalendarSelectedDate.end.month ,
                         CalendarSelectedDate.end.day,
                       ),
-                      arrivalTime: 0,
+                      arrivalTime: contactData.arrivalTime,
                       guestNumber: guestNumber,
                     }),
                   },
@@ -453,8 +586,30 @@ export default function Home() {
            bg-[#2F3B40] text-white 
            hover:bg-[#379237] hover:scale-[1.02] 
            disabled:bg-[#EFEBE0] disabled:text-[#BFAF9F] disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100"
-            >Zarezerwuj i przejdź do płatności
+            >Zarezerwuj i przejdź do płatnościW
           </button>
+          {
+            !isCorrectEmail && (
+              <div role="alert" className="alert alert-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Adresy email nie są takie same</span>
+              </div>
+            )
+          }
+          {
+            !isPhoneValid && (
+              <div role="alert" className="alert alert-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Niepoprawny numer telefonu</span>
+              </div>
+            )
+          }
+          
+          
           {/* <button
             className="btn btn-primary btn-outline hover:scale-102 transition-all duration-500"
             onClick={async () => {
@@ -513,9 +668,6 @@ export default function Home() {
             {" "}
             Wyslij SMSa
           </button> */}
-          {/* <button onClick={callAlert} className="btn rounded-xl">
-            Pobierz dane o rezerwacjach
-          </button> */}
           <div
             role="alert"
             className={`alert alert-success ${isPurchaseConfirmed}`}
@@ -540,3 +692,5 @@ export default function Home() {
     </div>
   );
 }
+
+

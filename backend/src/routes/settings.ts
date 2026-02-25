@@ -60,7 +60,8 @@ const settingsSchema = z.object({
     pricePerPerson: z.number().min(0).nonnegative().optional(),
     weekendPrice: z.number().min(0).nonnegative().optional(),
     holidayPrice: z.number().min(0).nonnegative().optional(),
-    extraPersonPrice: z.number().min(0).nonnegative().optional()
+    extraPersonPrice: z.number().min(0).nonnegative().optional(),
+    minimumDuration: z.number().min(1).optional(),
 });
 
 router.put("/", async (req,res) => {
@@ -73,7 +74,8 @@ router.put("/", async (req,res) => {
         const weekendIncrease = parsed.data.weekendIncrease ?? parsed.data.weekendPrice;
         const holidayIncrease = parsed.data.holidayIncrease ?? parsed.data.holidayPrice;
         const pricePerPerson = parsed.data.pricePerPerson ?? parsed.data.extraPersonPrice;
-        if (weekendIncrease === undefined || holidayIncrease === undefined || pricePerPerson === undefined) {
+        const minimumDuration = parsed.data.minimumDuration ?? parsed.data.minimumDuration ;
+        if (weekendIncrease === undefined || holidayIncrease === undefined || pricePerPerson === undefined || minimumDuration === undefined) {
                 return res.status(400).json({
                         error: "Missing required settings fields",
                 });
@@ -82,6 +84,7 @@ router.put("/", async (req,res) => {
     settings.weekendIncrease = weekendIncrease;
     settings.holidayIncrease = holidayIncrease;
     settings.pricePerPerson = pricePerPerson;
+    settings.minimumDuration = minimumDuration;
 
     try {
         await fs.writeFile(
@@ -110,6 +113,7 @@ router.get("/", async (req, res) => {
             extraPersonPrice: settings.pricePerPerson,
             specialDays: resp.map((r) => ({ date: r.date, price: r.price })),
             fixedHolidays: settings.fixedHolidays,
+            minimumDuration: settings.minimumDuration,
         });
     } catch (error) {
         console.error("GET /settings failed", error);

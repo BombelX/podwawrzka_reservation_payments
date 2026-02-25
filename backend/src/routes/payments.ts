@@ -10,6 +10,7 @@ import { cached3rdPartyReservations, sync3PartyReservations} from "./reservation
 import { stat } from "fs";
 import { s } from "react-router/dist/development/index-react-server-client-BSxMvS7Z";
 import { ba } from "react-router/dist/development/instrumentation-iAqbU5Q4";
+// import { settings } from "cluster";
 const { combine, timestamp, errors, json } = winston.format;
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
@@ -378,11 +379,19 @@ router.post("/begin", async (req, res) => {
 
   const startDate = data.start;
   const endDate = data.end;
+
+  if (endDate <= startDate) {
+    return res.status(400).json({ error: "End date must be after start date" });
+  }
   const msPerDay = 1000 * 60 * 60 * 24;
   const nights = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / msPerDay));
   const price = Math.round(Number(data.amount));
   const guestNumber = data.guestNumber;
+  const settings = require("../settings.json");
 
+  if (nights < settings.minDuration) {
+    return res.status(400).json({ error: "Reservation is too short" });
+  }
 
   const calculatedPrice = priceCheck(nights, guestNumber,startDate,endDate);
   if (price < calculatedPrice) {

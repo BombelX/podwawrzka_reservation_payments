@@ -58,7 +58,6 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
 
                             <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
 
-                            <!-- HEADER -->
                                 <tr>
                                     <td>
                                     <img 
@@ -70,7 +69,6 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
                                     </td>
                                 </tr>
 
-                            <!-- CONTENT -->
                             <tr>
                                 <td style="padding:30px;">
 
@@ -86,7 +84,6 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
                                 </p>
 
 
-                                <!-- DATE TABLE -->
                                 <table width="100%" cellpadding="12" cellspacing="0" style="border-collapse:collapse;margin:25px 0;">
                                     <thead>
                                     <tr style="background:#f0f2f5;">
@@ -123,7 +120,6 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
                                     Dojazd
                                     </h3>
 
-                                    <!-- MAP IMAGE (clickable) -->
                                     <a href="https://maps.app.goo.gl/vcLS3H4DaDyRGeHe6" target="_blank" style="text-decoration:none;">
                                     <img
                                         src="https://i.postimg.cc/MTQNgBwq/image-2026-02-17-170659094.png"
@@ -157,11 +153,11 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
                                 </td>
                                 </tr>
 
-                            <!-- FOOTER -->
                             <tr>
                                 <td style="background:#f0f2f5;padding:20px;text-align:center;color:#777;font-size:13px;">
                                 W razie pytań skontaktuj się z nami:<br>
-                                kontakt@podwawrzka.pl
+                                kontakt@podwawrzka.pl <br>
+                                <a href="https://podwawrzka.pl/status" target="_blank" style="color:#2f6fed;">Sprawdź Status Swojego Zamówienia</a>
                                 </td>
                             </tr>
 

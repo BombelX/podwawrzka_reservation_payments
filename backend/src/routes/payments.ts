@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "../db/client";
 import { mockP24Tokens, payments, reservations, specialPrices, users } from "../db/schema";
 import * as crypto from "crypto";
-import { and, or, gte, lte, sql, count, eq ,lt, gt} from "drizzle-orm";
+import { and, or, gte, lte, sql, count, eq ,lt, gt, inArray} from "drizzle-orm";
 import winston, { child } from "winston"
 import { sendSMS,sendEmail } from "./clientNotify";
 import { cached3rdPartyReservations, sync3PartyReservations} from "./reservations";
@@ -23,6 +23,75 @@ const logger = winston.createLogger({
 });
 
 const router = Router();
+
+const PAID_PAYMENT_STATUSES = ["success", "paid", "Paid"] as const;
+const FAILED_PAYMENT_STATUSES = ["error", "failed", "rejected", "cancelled", "canceled", "declined", "archive", "Archive", "expired", "timeout"] as const;
+const BLOCKING_PAYMENT_STATUSES = ["begin", "pending", "Pending", ...PAID_PAYMENT_STATUSES] as const;
+const STALE_PENDING_PAYMENT_STATUSES = ["begin", "pending", "Pending"] as const;
+const PAYMENT_PENDING_TTL_MINUTES = Number(process.env.PAYMENT_PENDING_TTL_MINUTES ?? 30);
+
+function normalizeStatus(status: string): string {
+  return String(status ?? "").trim().toLowerCase();
+}
+
+function isPaidStatus(status: string): boolean {
+  const normalized = normalizeStatus(status);
+  return PAID_PAYMENT_STATUSES.some((s) => s.toLowerCase() === normalized);
+}
+
+function isFailedStatus(status: string): boolean {
+  const normalized = normalizeStatus(status);
+  return FAILED_PAYMENT_STATUSES.some((s) => s.toLowerCase() === normalized);
+}
+
+function mapToFrontendPaymentStatus(status: string): "success" | "pending" | "error" {
+  if (isPaidStatus(status)) return "success";
+  if (isFailedStatus(status)) return "error";
+  return "pending";
+}
+
+async function releaseReservationForFailedPayment(sid: string, failedStatus: string) {
+  const linked = await db
+    .select({ reservationId: payments.reservations_id })
+    .from(payments)
+    .where(eq(payments.token, sid))
+    .limit(1);
+
+  db.transaction((tx) => {
+    tx.update(payments).set({ status: failedStatus }).where(eq(payments.token, sid)).run();
+
+    const reservationId = linked[0]?.reservationId;
+    if (reservationId != null) {
+      tx.delete(reservations).where(eq(reservations.id, reservationId)).run();
+    }
+  });
+}
+
+function isCreatedAtStale(createdAt: string): boolean {
+  const parsed = Date.parse(createdAt);
+  if (Number.isNaN(parsed)) return false;
+  return parsed <= Date.now() - PAYMENT_PENDING_TTL_MINUTES * 60 * 1000;
+}
+
+export async function cleanupStalePendingPayments(targetSid?: string): Promise<number> {
+  const conditions = [inArray(payments.status, STALE_PENDING_PAYMENT_STATUSES as unknown as string[])];
+  if (targetSid) {
+    conditions.push(eq(payments.token, targetSid));
+  }
+
+  const candidates = await db
+    .select({ sid: payments.token, createdAt: payments.created_at })
+    .from(payments)
+    .where(and(...conditions));
+
+  const stale = candidates.filter((p) => isCreatedAtStale(p.createdAt));
+
+  for (const payment of stale) {
+    await releaseReservationForFailedPayment(payment.sid, "expired");
+  }
+
+  return stale.length;
+}
 
 // const ReservationMonth = z.object({
 //     month: z.coerce.number().int().min(0).max(11),
@@ -187,7 +256,7 @@ router.post("/status", async (req, res) => {
     .update(JSON.stringify(signParams))
     .digest("hex");
 
-  console.log("LOCAL HASH (verify sign):", hash);
+  // console.log("LOCAL HASH (verify sign):", hash);
 
   const p24response = await fetch(baseUrl + "/api/v1/transaction/verify", {
     method: "PUT",
@@ -213,6 +282,7 @@ router.post("/status", async (req, res) => {
   console.log("P24 RAW RESPONSE:", rawResp);
 
   if (!p24response.ok) {
+    await releaseReservationForFailedPayment(sid, "error");
     payStatuslogger.error(
       "P24 verify failed",
       { status: p24response.status, rawResp },
@@ -231,10 +301,14 @@ router.post("/status", async (req, res) => {
 
   const status = payload?.data?.status ?? "";
   if (status !== "") {
-    await db
-      .update(payments)
-      .set({ status }) // poprawka: musi być obiekt
-      .where(eq(payments.token, sid));
+    if (isFailedStatus(status)) {
+      await releaseReservationForFailedPayment(sid, normalizeStatus(status));
+    } else {
+      await db
+        .update(payments)
+        .set({ status }) 
+        .where(eq(payments.token, sid));
+    }
 
 
       const orderinfo = await db.select().from(payments).innerJoin(reservations, eq(payments.reservations_id, reservations.id)).innerJoin(users, eq(payments.user_id, users.id)
@@ -243,12 +317,13 @@ router.post("/status", async (req, res) => {
       console.log(orderinfo.length);
 
 
-      if (status == 'success' && orderinfo.length > 0){
-          console.log(orderinfo[0]);
-         sendEmail(orderinfo[0].users.email,amount/100,orderId,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
-           orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start,orderinfo[0].reservations.end);
+      if (isPaidStatus(status) && orderinfo.length > 0){
+          sendEmail(orderinfo[0].users.email,amount/100,orderId,sid,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
+          orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start,orderinfo[0].reservations.end);
 
-        sendSMS("Dziękujemy za rezerwację w dniach od " + orderinfo[0].reservations.start + " do " + orderinfo[0].reservations.end + "\n Czekamy na Was! ","+48739973665");
+          sendSMS("Dziękujemy za rezerwację w dniach od " +  new Date(orderinfo[0].reservations.start).getDate()+"."+ (new Date(orderinfo[0].reservations.start).getMonth()+1) 
+          + "." + new Date(orderinfo[0].reservations.start).getFullYear() + " do " + new Date(orderinfo[0].reservations.end).getDate() +"."+ 
+          (new Date(orderinfo[0].reservations.end).getMonth()+1) + "." + new Date(orderinfo[0].reservations.end).getFullYear()+ "\n Czekamy na Was! ","+48739973665");
       }
   }
   if (status == ""){
@@ -275,6 +350,7 @@ router.post("/checkpayment", async (req, res) => {
   }
 
   const sid = parsed.data.sid
+  await cleanupStalePendingPayments(sid);
   console.log("Checking payment status for SID:", sid);
   let result;
   console.log(await db.select().from(payments).where(eq(payments.token, sid)));
@@ -289,7 +365,10 @@ router.post("/checkpayment", async (req, res) => {
   }
   if (result[0]){
     const status = result[0].status
-    return res.status(200).json({ paymentStatus: status })
+    if (isFailedStatus(status)) {
+      await releaseReservationForFailedPayment(sid, normalizeStatus(status));
+    }
+    return res.status(200).json({ paymentStatus: mapToFrontendPaymentStatus(status) })
     }
   else{
     return res.status(404).json({
@@ -308,9 +387,16 @@ async function checkReservationConflicts(
   await sync3PartyReservations();
 
   for (const reservation of cached3rdPartyReservations.values()) {
-    const rs = new Date(reservation.start);
-    const re = new Date(reservation.end);
-    if (rs < data.end && re > data.start) {
+      const rs = new Date(reservation.start).toISOString().split('T')[0];
+      const re = new Date(reservation.end).toISOString().split('T')[0];
+      const ds = data.start.toLocaleDateString('en-CA');
+      
+      
+      const de = new Date(data.end).toISOString().split('T')[0];
+      // console.log(`DDEBUG: Sprawdzam rezerwację ${reservation.start} - ${reservation.end}`);
+      // console.log(`DDEBUG: rs: ${rs}, de: ${de} | re: ${re}, ds: ${ds}`);
+      // console.log(`DDEBUG: Czy rs < de? ${rs < de} | Czy re > ds? ${re > ds}`);
+    if (rs < de && re > ds) {
       console.log("Found 3rd party reservation conflicts:", reservation);
       return false;
     }
@@ -328,12 +414,14 @@ async function checkReservationConflicts(
 
 
   const resp = await db
-    .select()
+    .select({ reservationId: reservations.id })
     .from(reservations)
+    .innerJoin(payments, eq(payments.reservations_id, reservations.id))
     .where(
       and(
         lt(reservations.start, endISO),
-        gt(reservations.end, startISO) 
+        gt(reservations.end, startISO),
+        inArray(payments.status, BLOCKING_PAYMENT_STATUSES as unknown as string[])
       )
     );
 
@@ -368,6 +456,8 @@ function priceCheck( nights: number, guestNumber: number,start: Date,end: Date) 
 }
 
 router.post("/begin", async (req, res) => {
+  await cleanupStalePendingPayments();
+
   const parsed = PaymentsData.safeParse(req.body);
   if (!parsed.success) {
 
@@ -431,6 +521,7 @@ router.post("/begin", async (req, res) => {
         status: "begin",
         reservations_id: reservationId,
         user_id: userId,
+        created_at: new Date().toISOString(),
       }).run();
       paymentId = Number(p.lastInsertRowid);
 
@@ -481,8 +572,8 @@ router.post("/begin", async (req, res) => {
         "country": "PL",
         "phone": String(data.phone),
         "language": "pl",
-        "urlReturn": `http://46.224.13.142:3000/paymentStatus/${sessionId}`,
-        "urlStatus": `http://46.224.13.142:3100/payments/status`,
+        "urlReturn": `https://rezerwacje.podwawrzka.pl/paymentStatus/${sessionId}`,
+        "urlStatus": `https://rezerwacje.podwawrzka.pl/api/payments/status`,
         "sign": hash,
       }),
     });

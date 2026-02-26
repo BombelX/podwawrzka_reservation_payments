@@ -3,6 +3,7 @@
 import React from "react";
 import { useEffect, useState, use } from "react";
 import lottieAnimation from "../../components/animation";
+import { stat } from "fs";
 
 type BackFromPayment = {
   sid: string;
@@ -18,7 +19,7 @@ export default function Page({ params }: { params: Promise<BackFromPayment> }) {
     const fetchStatus = async () => {
       try {
         const paymentResponse = await fetch(
-          "http://46.224.13.142:3100/payments/checkpayment",
+          `${process.env.NEXT_PUBLIC_API_URL}/payments/checkpayment`,
           {
             method: "POST",
             headers: {
@@ -58,14 +59,14 @@ export default function Page({ params }: { params: Promise<BackFromPayment> }) {
             ? "Dziękujemy za rezerwacje"
             : "Przetwarzanie płatnośći..."}
         </h1>
-        <h1>Nr: {data.sid}</h1>
+        <h2 className="text-sm">Nr: {data.sid}</h2>
         <h1>
           Status Płatności:{" "}
           {status == "error"
             ? "Nieudana"
             : status == "pending"
             ? "W trakcie"
-            : status}
+            : status == "success" ? "Zakończona sukcesem" : status}
         </h1>
       </div>
 

@@ -71,6 +71,7 @@ export default function Home() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100";
 
+  // console.log("API URL:", API_URL);
   const [settingsVersion, setSettingsVersion] = useState(0);
 
   useEffect(() => {
@@ -478,7 +479,7 @@ export default function Home() {
                   `Liczba nocy: ${CalendarSelectedDate.nights}`} 
               </h1>
               {CalendarSelectedDate && CalendarSelectedDate.nights < typedSettings.minimumDuration && (
-                <div  className="badge badge-warning">
+                <div  className="badge badge-warning bg-[#C98B4B]/60">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
@@ -498,7 +499,7 @@ export default function Home() {
                 return;
               } else {
                 const response = await fetch(
-                  "http://46.224.13.142:3100/payments/make",
+                  API_URL + "/payments/make",
                   {
                     method: "POST",
                     headers: {
@@ -527,11 +528,11 @@ export default function Home() {
                   setRuleAcceptation(!RuleAcceptation);
                 }}
                 type="checkbox"
-                className="checkbox border-[#379237] checked:bg-[#379237] checked:border-[#379237]"
+                className="checkbox border-[#C98B4B]/10 bg-[#C98B4B]/60 checked:bg-[#379237] checked:border-[#379237]"
               ></input>
               <p>
                 Akceptuje{" "}
-                <a className="text-[#379237] hover:underline font-medium" href="/rules">
+                <a className="text-[#C98B4B]/60 hover:underline font-medium" href="/rules">
                   Regulamin
                 </a>
               </p>
@@ -550,7 +551,7 @@ export default function Home() {
               
               try {
                 const paymentLink = await fetch(
-                  "http://46.224.13.142:3100/payments/begin",
+                  API_URL + "/payments/begin",
                   {
                     method: "POST",
                     headers: {
@@ -563,16 +564,8 @@ export default function Home() {
                       name: contactData.name,
                       surname: contactData.surname,
                       phone: contactData.phone,
-                      start: new Date(
-                        CalendarSelectedDate.start.year,
-                        CalendarSelectedDate.start.month ,
-                        CalendarSelectedDate.start.day,
-                      ),
-                      end: new Date(
-                        CalendarSelectedDate.end.year,
-                        CalendarSelectedDate.end.month ,
-                        CalendarSelectedDate.end.day,
-                      ),
+                      start: `${CalendarSelectedDate.start.year}-${String(CalendarSelectedDate.start.month + 1).padStart(2, '0')}-${String(CalendarSelectedDate.start.day).padStart(2, '0')}`,
+                      end: `${CalendarSelectedDate.end.year}-${String(CalendarSelectedDate.end.month + 1).padStart(2, '0')}-${String(CalendarSelectedDate.end.day).padStart(2, '0')}`,
                       arrivalTime: contactData.arrivalTime,
                       guestNumber: guestNumber,
                     }),
@@ -602,7 +595,7 @@ export default function Home() {
           </button>
           {
             !isCorrectEmail && (
-              <div role="alert" className="alert alert-warning">
+              <div role="alert" className="alert alert-warning bg-[#C98B4B]/60 border-1 border-[#C98B4B]/30">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -612,7 +605,7 @@ export default function Home() {
           }
           {
             !isPhoneValid && (
-              <div role="alert" className="alert alert-warning">
+              <div role="alert" className="alert alert-warning bg-[#C98B4B]/60 border-1 border-[#C98B4B]/30">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -682,7 +675,7 @@ export default function Home() {
           </button> */}
           <div
             role="alert"
-            className={`alert alert-success ${isPurchaseConfirmed}`}
+            className={`alert alert-success ${isPurchaseConfirmed} bg-[#C98B4B]/60 border-1 border-[#C98B4B]/30`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

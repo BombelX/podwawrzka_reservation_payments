@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { date, set, z } from "zod";
 import { db } from "../db/client";
-import { reservations, users } from "../db/schema";
-import { and, or, gte, lte,lt,gt, sql, count, eq } from "drizzle-orm";
+import { reservations, users, payments } from "../db/schema";
+import { and, or, gte, lte,lt,gt, sql, count, eq, inArray } from "drizzle-orm";
 import { parse } from "node:path";
 import { error } from "node:console";
 import * as icalParse from "node-ical";
@@ -10,6 +10,8 @@ import icalgen, { ICalCalendarMethod } from "ical-generator";
 import { start } from "node:repl";
 
 const router = Router();
+
+const BLOCKING_PAYMENT_STATUSES = ["begin", "pending", "Pending", "success", "paid", "Paid"] as const;
 
 const ReservationMonth = z.object({
     month: z.coerce.number().int().min(0).max(11),
@@ -96,24 +98,25 @@ export async function sync3PartyReservations() {
 
   const icalUrl1 = process.env.THIRD_PARTY_ICAL_URL_1;
   const icalUrl2 = process.env.THIRD_PARTY_ICAL_URL_2;
+  const icalUrl3 = process.env.THIRD_PARTY_ICAL_URL_3;
 
-  if (!icalUrl1 && !icalUrl2) {
+
+  if (!icalUrl1 && !icalUrl2 && !icalUrl3) {
     console.log("No 3rd party ical urls provided, skipping sync");
     return;
   }
 
   try {
-    if (icalUrl1) await addIcsToSet(icalUrl1, tempSet);
     if (icalUrl2) await addIcsToSet(icalUrl2, tempSet);
+    if (icalUrl3) await addIcsToSet(icalUrl3, tempSet);
+    if (icalUrl1) await addIcsToSet(icalUrl1, tempSet);
   } catch (e) {
     console.error("3rd party iCal sync failed:", e);
     return;
   }
 
-  console.log(tempSet);
+  // console.log(tempSet);
   cached3rdPartyReservations = tempSet;
-
-
 }
 
 
@@ -254,6 +257,29 @@ router.get("/all", async(_req,res) =>{
     return res.send(calendar.toString());
 })
 
+const adminReservation = z.object({
+    month: z.number().min(1).max(12),
+    year: z.number().min(2010).max(2100),
+});
+
+router.post("/admin", async (req, res) => {
+    const parsed = adminReservation.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({
+            error: "Wrong Month or year",
+            details: parsed.error.issues,
+        })
+    }
+    const result = await db.select().from(reservations).where(
+      and(
+        lt(reservations.start, new Date(Date.UTC(parsed.data.year, parsed.data.month, 1)).toISOString()), 
+        gt(reservations.end, new Date(Date.UTC(parsed.data.year, parsed.data.month - 1, 1)).toISOString()) 
+      )
+    );
+    return res.status(200).json(result);
+
+});
+
 router.get("/already", async (req, res) => {
   const parsed = ReservationMonth.safeParse(req.query);
   if (!parsed.success) {
@@ -277,10 +303,12 @@ router.get("/already", async (req, res) => {
       end: reservations.end, 
     })
     .from(reservations)
+    .innerJoin(payments, eq(payments.reservations_id, reservations.id))
     .where(
       and(
         lt(reservations.start, monthEndStr),
-        gt(reservations.end, monthStartStr)
+        gt(reservations.end, monthStartStr),
+        inArray(payments.status, BLOCKING_PAYMENT_STATUSES as unknown as string[])
       )
     );
 
@@ -289,8 +317,8 @@ router.get("/already", async (req, res) => {
     const re = new Date(r.end);
     return rs < monthEndExclusive && re > monthStart; 
   });
-    console.log("month/year", month, year);
-    console.log("dbRes", dbRes.length, "cached3rdParty", cached3rdPartyReservations.size, "third", third.length);
+    // console.log("month/year", month, year);
+    // console.log("dbRes", dbRes.length, "cached3rdParty", cached3rdPartyReservations.size, "third", third.length);
 
   return res.json([...dbRes, ...third]);
 });

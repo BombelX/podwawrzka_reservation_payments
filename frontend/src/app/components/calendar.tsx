@@ -108,19 +108,18 @@ class Year extends CalendarElement {
 }
 
 const daysInMonth: Record<number, number> = {
-  0: 31,
-  1: 28,
-  2: 31,
-  3: 30,
-  4: 31,
-  5: 30,
-  6: 31,
-  7: 31,
-  8: 31,
-  9: 30,
-  10: 31,
-  11: 30,
-  12: 31,
+  0: 31, // Sty
+  1: 28, // Lut
+  2: 31, // Mar
+  3: 30, // Kwi
+  4: 31, // Maj
+  5: 30, // Cze
+  6: 31, // Lip
+  7: 31, // Sie
+  8: 30, // Wrz 
+  9: 31, // Paź 
+  10: 30, // Lis 
+  11: 31, // Gru 
 };
 
 const monthNames: Record<number, string> = {
@@ -161,7 +160,7 @@ class Month extends CalendarElement {
 
   async fetchDaysAvailable() {
     this.childrens.forEach((d) => d.setDisabled(false));
-    const url = `http://46.224.13.142:3100/reservations/already?month=${this.monthNumber}&year=${this.parentYear.yearNumber}`;
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/reservations/already?month=${this.monthNumber}&year=${this.parentYear.yearNumber}`;
     const resp = await fetch(url);
     const data: unknown = await resp.json();
     if (!Array.isArray(data)) {

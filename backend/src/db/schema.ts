@@ -1,4 +1,5 @@
 import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { date, email, string } from "zod";
 import { Logger, LoggerConfig } from "log4ts";
 export const reservations = sqliteTable("reservations",
@@ -28,7 +29,8 @@ export const payments = sqliteTable("payments",{
     status: text().notNull(),
     reservations_id: int().notNull(),
     user_id: int().notNull(),
-    p24_token: text()
+    p24_token: text(),
+    created_at: text().notNull().default(sql`(datetime('now'))`)
 })
 
 export const mockP24Tokens = sqliteTable("mock_p24_tokens",{

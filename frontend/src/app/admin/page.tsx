@@ -4,6 +4,7 @@ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from '@c
 import lottieAnimation from "../components/animation";
 import { useEffect, useState } from 'react';
 import settings from "../settings/settings.json";
+import Reservations from '../components/reservations';
 
 
 export default function Page() {
@@ -18,7 +19,7 @@ export default function Page() {
 
     useEffect(() => {
         const fetchSettings = async () => {
-        const res = await fetch("http://46.224.13.142:3100/settings", {
+        const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/settings", {
             method: "GET",
             headers: {
             "Content-Type": "application/json",
@@ -74,7 +75,7 @@ export default function Page() {
                     <legend className="fieldset-legend text-[#2F3B40] font-bold text-sm mb-4 uppercase tracking-wider">Podaj podstawową cenę rezerwacji:</legend>
                     <input
                     type="number"
-                    className="input focus:outline-2 bg-white focus:ring-2 border-[#2F3B40] focus:ring-[#C98B4B]/60 focus:border-0 shadow-xl border-black validator"
+                    className="input focus:outline-2 bg-white focus:ring-2 border-[#C98B4B] focus:ring-[#C98B4B]/60 focus:border-0 shadow-xl  validator"
                     required
                     placeholder="Pomiedzy 100 a 1500 zł"
                     min="100"
@@ -86,10 +87,10 @@ export default function Page() {
                     <p className="validator-hint">Pomiedzy 100 a 1500 zł</p>
                 </fieldset>
                 <fieldset className='flex flex-col justify-start items-start mb-6'>
-                <legend className="fieldset-legend text-[#2F3B40] font-bold text-sm mb-4 uppercase tracking-wider">Podaj dodatek do ceny za rezerwacje w weekend:</legend>
+                <legend className="fieldset-legend text-[#2F3B40] font-bold text-sm mb-4 uppercase tracking-wider ">Podaj dodatek do ceny za rezerwacje w weekend:</legend>
                 <input
                 type="number"
-                className="input focus:outline-2 bg-white focus:ring-2 border-[#2F3B40] focus:ring-[#C98B4B]/60 focus:border-0 shadow-xl border-black validator"
+                className="input focus:outline-2 bg-white focus:ring-2 border-[#C98B4B] focus:ring-[#C98B4B]/60 focus:border-0 shadow-xl  validator"
                 required
                 placeholder="Pomiedzy 10 a 200 zł"
                 min="10"
@@ -105,7 +106,7 @@ export default function Page() {
                 <legend className="fieldset-legend text-[#2F3B40] font-bold text-sm mb-4 uppercase tracking-wider">Podaj dodatek do ceny za rezerwacje w dni świąteczne:</legend>
                 <input
                 type="number"
-                className="input focus:outline-2 bg-white focus:ring-2 border-[#2F3B40] focus:ring-[#C98B4B]/60 focus:border-0 shadow-xl border-black validator"
+                className="input focus:outline-2 bg-white focus:ring-2 border-[#C98B4B] focus:ring-[#C98B4B]/60 focus:border-0 shadow-xl  validator"
                 required
                 placeholder="Pomiedzy 10 a 200 zł"
                 min="10"
@@ -134,7 +135,7 @@ export default function Page() {
                         onChange={(e) => setExtraPersonPrice(Number(e.target.value))}
                         className="range range-sm [--range-shdw:#C98B4B] bg-[#F2EFE9] w-full"
                         style={{
-                            color:"#c98B4B"
+                            color:"#C98B4B"
                         }}
                         />
                         <div className="flex justify-between px-2 mt-2 text-[#E0D7C6]">
@@ -182,7 +183,7 @@ export default function Page() {
                 <div>
                     <button className='mt-3 p-5 text-lg  rounded-xl mb-3 btn bg-[#1C1917]/85 text-white hover:bg-[#379237] transition-all hover:scale-102 duration-500  border-gray-100 border' onClick={async () => {
                         // console.log(basePrice, weekendPrice, holiPrice, extraPersonPrice);
-                        const resp = await fetch("http://46.224.13.142:3100/settings/",{
+                        const resp = await fetch(process.env.NEXT_PUBLIC_API_URL + "/settings/",{
                             method : "PUT",
                             headers: {
                                 "Content-Type" : "application/json"
@@ -203,7 +204,7 @@ export default function Page() {
                         }}
                     >Zapisz</button>
                 </div>
-                <div className="bg-white p-10 rounded-2xl border border-[#E0D7C6]/30 shadow-sm mb-6 mt-8 shadow-xl w-full max-w-xl mx-auto">
+                <div className=" flex flex-col justify-center items-center bg-white p-10 rounded-2xl border border-[#E0D7C6]/30 shadow-sm mb-6 mt-8 shadow-xl w-full max-w-xl mx-auto">
                 <div>
                     <div className="w-full max-w-xs flex-col flex gap-2">
                     <legend className="fieldset-legend text-[#2F3B40] font-bold text-sm mb-1.5 uppercase tracking-wider">Dodaj dzień ze specjalną ceną</legend>
@@ -212,7 +213,7 @@ export default function Page() {
                     <button className='btn text-white bg-[#C98B4B]/90 rounded hover:scale-102 duration-1000 transition-all border-orange-100 btn-soft' onClick={async () => {
                         try{
                             
-                            const res = await fetch("http://46.224.13.142:3100/settings/special", {
+                            const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/settings/special", {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
@@ -234,16 +235,16 @@ export default function Page() {
                     </div>
                 </div>
 
-                <div className='mt-4'>
+                <div className='mt-4 flex flex-col justify-center items-center'>
                     <legend className="fieldset-legend text-[#2F3B40] font-bold text-sm mb-4 uppercase tracking-wider">Dodane dni specjalne :</legend>
-                    <div className='flex gap-4'>
+                    <div className='flex gap-4 justify-center items-center flex-wrap max-w-lg'>
                     {settings.specialDays.map((day) => {
                         return(
-                            <div key={day.date} className='badge bg-white border border-gray-900/30 text-[#2F3B40] shaadow-xl flex flex-row pr-0.5 p-4 justify-center items-center text-md'>
+                            <div key={day.date} className='badge bg-[#F2EFE9] border border-gray-300/30 text-[#2F3B40] shaadow-xl flex flex-row pr-0.5 p-4 justify-center items-center text-md'>
                                 <p className="mr-1 text-md text-[#2F3B40]">{day.date}</p>
                                 <p className="mr-1 text-md text-[#2F3B40]">{day.price}zł</p>
                                 <button onClick={async () => {
-                                    const res = await fetch("http://46.224.13.142:3100/settings/special", {
+                                    const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/settings/special", {
                                         method: "DELETE",
                                         headers: {
                                             "Content-Type": "application/json",
@@ -254,14 +255,17 @@ export default function Page() {
                                     });
                                     const json = await res.json();
                                     setSettingsVersion((v) => v + 1); 
-                                }} className='bg-red-400 rounded-full text-white pr-1.5 pl-1.5'>X</button>
+                                }} className='bg-gray-500 rounded-full text-white pr-1.5 pl-1.5'>X</button>
                             </div>
                         );
                     })}
                     </div>
 
-                </div>
                     </div>
+                </div>
+                    <Reservations>
+                        
+                    </Reservations>
 
             </div>
         </SignedIn>

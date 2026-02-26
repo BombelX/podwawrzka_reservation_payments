@@ -30,7 +30,7 @@ export async function sendSMS(message : string, phoneNumber : string){
 }
 
 
-export async function sendEmail(email:string , amount: number, orderNumber : number, name : string, arrivalTime : string , guestNumber : number , from : string , to :string ){
+export async function sendEmail(email:string , amount: number, orderNumber : number,paymentNumber : string, name : string, arrivalTime : string , guestNumber : number , from : string , to :string ){
     const reciverName = "Podwawrzką"
     try{
         const resp = await fetch("https://api.brevo.com/v3/smtp/email",
@@ -93,8 +93,8 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
                                     </thead>
                                     <tbody>
                                     <tr>
-                                        <td style="border:1px solid #e5e7eb;">${from}}</td>
-                                        <td style="border:1px solid #e5e7eb;">${to}</td>
+                                        <td style="border:1px solid #e5e7eb;">${new Date(from).getDate() + "-" + (new Date(from).getMonth() + 1) + "-" + new Date(from).getFullYear()}</td>
+                                        <td style="border:1px solid #e5e7eb;">${new Date(to).getDate() + "-" + (new Date(to).getMonth() + 1) + "-" + new Date(to).getFullYear()}</td>
                                     </tr>
                                     <tr>
                                         <td style="border:1px solid #e5e7eb;">${arrivalTime}</td>
@@ -157,7 +157,7 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
                                 <td style="background:#f0f2f5;padding:20px;text-align:center;color:#777;font-size:13px;">
                                 W razie pytań skontaktuj się z nami:<br>
                                 kontakt@podwawrzka.pl <br>
-                                <a href="https://podwawrzka.pl/status" target="_blank" style="color:#2f6fed;">Sprawdź Status Swojego Zamówienia</a>
+                                <a href="https://rezerwacje.podwawrzka.pl/paymentStatus/${paymentNumber}" target="_blank" style="color:#2f6fed;">Sprawdź Status Swojego Zamówienia</a>
                                 </td>
                             </tr>
 
@@ -173,7 +173,7 @@ export async function sendEmail(email:string , amount: number, orderNumber : num
         }
     );
     const data = await resp.json();
-    console.log(data);
+    console.log("EMAIL API RESPONSE:", data);
 
     return resp.status
     }

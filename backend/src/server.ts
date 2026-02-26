@@ -9,6 +9,7 @@ import { sync3PartyReservations } from './routes/reservations';
 import cors from 'cors';
 import reservationsRouter from './routes/reservations';
 import paymentsRouter from './routes/payments';
+import { cleanupStalePendingPayments } from './routes/payments';
 import settingsRouter from './routes/settings';
 // import emialsRouter from './routes/emails';
 // import SMSRouter from './routes/smsnotify';
@@ -39,7 +40,15 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3100;
-app.listen(PORT, async () => {console.log(`Serwer działa na porcie ${PORT}`);try { await sync3PartyReservations(); } catch (e) { console.error(e); }; setInterval(sync3PartyReservations, 120000);});
+app.listen(PORT, async () => {
+  console.log(`Serwer działa na porcie ${PORT}`);
+  try { await sync3PartyReservations(); } catch (e) { console.error(e); }
+  try { await cleanupStalePendingPayments(); } catch (e) { console.error(e); }
+  setInterval(sync3PartyReservations, 120000);
+  setInterval(() => {
+    cleanupStalePendingPayments().catch(console.error);
+  }, 60000);
+});
 
 
 

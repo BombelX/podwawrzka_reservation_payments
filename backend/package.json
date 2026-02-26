@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
     "start": "node src/server.ts",
     "dev": "nodemon --exec npx ts-node src/server.ts"
   },
@@ -19,6 +20,7 @@
     "express": "^5.1.0",
     "ical-generator": "^10.0.0",
     "log4ts": "^0.4.2",
+    "node-ical": "^0.25.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.18.3",

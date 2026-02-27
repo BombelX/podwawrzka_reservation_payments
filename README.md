@@ -8,7 +8,7 @@ To rozwiązanie łączy nowoczesny frontend (Next.js), API backendowe (Express +
 
 ---
 
-## Dlaczego ten projekt robi wrażenie?
+## Zalety
 
 - Wdrożony **autorski kalendarz rezerwacji** (logika dostępności, zakresów dat i limitów pobytu).
 - Integracja płatności online przez **Przelewy24** (obsługa statusów i ścieżki potransakcyjnej).

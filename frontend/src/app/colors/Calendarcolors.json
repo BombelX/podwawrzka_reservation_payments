@@ -11,25 +11,24 @@
     "todayBackGround": "bg-[#1C1917]",
     "todayTextColor": "text-white",
 
-    "selectedDayBackGround": "bg-[#C98B4B]",
-    "selectedDayTextColor": "text-white",
-    "selectedDayBorderColor": "border-[#A6723E]",
+    "selectedDayBackGround": "bg-[#654831c7]",
+    "selectedDayTextColor": "text-white font-bold",
+    "selectedDayBorderColor": "border-[#a18a73]/60",
     "selectedDayRingColor": "ring-[#C98B4B]/30",
 
     "disabledDayBackGround": "bg-[#F2EFE9]",
     "disabledDayTextColor": "text-[#C2BDB3]",
     "disabledDayBorderColor": "border-transparent",
 
-    "betweenSelectedDayBackGround": "bg-[#F2E3CA]",
-    "betweenSelectedDayTextColor": "text-[#5C3D2E] font-bold",
+    "betweenSelectedDayBackGround": "bg-[#6548314f]",
+    "betweenSelectedDayTextColor": "text-[#654831] font-bold",
     "betweenSelectedDayBorderColor": "border-[#D9A05B]/30",
-
-    "arrowsBackGroundColor": "bg-[#1C1917]",
+    "arrowsBackGroundColor": "bg-[#654831]",
     "arrowsHoverBackGroundColor": "hover:bg-[#C98B4B]",
     "arrowsTextColor": "text-white",
     "arrowsBorderColor": "border-transparent",
 
-    "badgesBackGroundColor": "bg-[#1C1917]",
+    "badgesBackGroundColor": "bg-[#654831]",
     "badgesTextColor": "text-white",
     "badgesBorderColor": "border-transparent",
 

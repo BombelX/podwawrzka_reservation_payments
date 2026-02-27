@@ -389,6 +389,7 @@ export default function Home() {
                 >
                   15:00 - 16:00
                 </option>
+    
                 <option
                   className="hover:bg-[#3E3A37] hover:text-white"
                   value="16:00 - 17:00"
@@ -470,23 +471,23 @@ export default function Home() {
               )}
             </div>
             <div className="flex flex-col gap-1 p-2">
-              <h1 className="badge">
+              <h1 className="badge bg-[#654831] text-white border-[#654831]/30">
                 {CalendarSelectedDate &&
                   `Wybrane daty: ${CalendarSelectedDate.start.day}.${CalendarSelectedDate.start.month+1}.${CalendarSelectedDate.start.year} - ${CalendarSelectedDate.end.day}.${CalendarSelectedDate.end.month+1}.${CalendarSelectedDate.end.year}`}
               </h1>
-              <h1 className="badge">
+              <h1 className="badge bg-[#654831] text-white border-[#654831]/30">
                 {CalendarSelectedDate &&
                   `Liczba nocy: ${CalendarSelectedDate.nights}`} 
-              </h1>
+              </h1>  
               {CalendarSelectedDate && CalendarSelectedDate.nights < typedSettings.minimumDuration && (
-                <div  className="badge badge-warning bg-[#C98B4B]/60">
+                <div  className="badge badge-warning text-[#654831] bg-white/90 border-1 border-[#C98B4B]/30 ">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <span>Minimalna długość pobytu to {typedSettings.minimumDuration} {typedSettings.minimumDuration === 1 ? "noc" : "noce"}</span>
                 </div>
               )}
-              <h1 className="badge">
+              <h1 className="badge bg-[#654831] text-white border-[#654831]/30">
                 {CalendarSelectedDate && `Kwota do zapłaty: ${price} zł`}
               </h1>
             </div>
@@ -528,7 +529,7 @@ export default function Home() {
                   setRuleAcceptation(!RuleAcceptation);
                 }}
                 type="checkbox"
-                className="checkbox border-[#C98B4B]/10 bg-[#C98B4B]/60 checked:bg-[#379237] checked:border-[#379237]"
+                className="checkbox border-[#C98B4B]/10 bg-[#654831]/60 checked:bg-[#379237]  checked:border-[#379237]"
               ></input>
               <p>
                 Akceptuje{" "}
@@ -595,7 +596,7 @@ export default function Home() {
           </button>
           {
             !isCorrectEmail && (
-              <div role="alert" className="alert alert-warning bg-[#C98B4B]/60 border-1 border-[#C98B4B]/30">
+              <div role="alert" className="alert alert-warning text-[#654831] bg-white/90 border-1 border-[#C98B4B]/30">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -605,7 +606,7 @@ export default function Home() {
           }
           {
             !isPhoneValid && (
-              <div role="alert" className="alert alert-warning bg-[#C98B4B]/60 border-1 border-[#C98B4B]/30">
+              <div role="alert" className="alert alert-warning text-[#654831] bg-white/90 border-1 border-[#C98B4B]/30">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -675,7 +676,7 @@ export default function Home() {
           </button> */}
           <div
             role="alert"
-            className={`alert alert-success ${isPurchaseConfirmed} bg-[#C98B4B]/60 border-1 border-[#C98B4B]/30`}
+            className={`alert alert-success ${isPurchaseConfirmed} bg-white/90 text-[#654831] border-1 border-[#C98B4B]/30`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -122,11 +122,5 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
 ![Płatność błąd](docs/screenshots/09-payment-failed.png)
 ![Płatność w trakcie](docs/screenshots/10-payment-pending.png)
 
-## Wersja „CV / LinkedIn” (krótki opis)
 
-Zaprojektowałem i wdrożyłem produkcyjny system rezerwacji online dla obiektu noclegowego, obejmujący autorski kalendarz dostępności, płatności Przelewy24, autentykację Clerk oraz komunikację wielokanałową przez Brevo (e-mail) i SMSAPI (SMS). Projekt zbudowałem jako pełny full-stack w Next.js + Express + TypeScript, z naciskiem na skalowalność, UX i gotowość do realnego wdrożenia.
-
----
-
-Jeśli chcesz, mogę też przygotować gotową wersję opisu pod konkretne sekcje LinkedIn: **About**, **Experience** i **Projects**.
 

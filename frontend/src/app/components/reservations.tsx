@@ -42,7 +42,7 @@ export default function Reservations() {
     return (
             <div className="bg-white p-10 rounded-2xl border border-[#E0D7C6]/30 shadow-xl mb-6 w-full max-w-xl mx-auto">
                 <div className="flex justify-around items-center bg-[#F2EFE9] rounded-lg mb-4 pt-2 pb-2">
-                    <button className="btn text-white bg-[#C98B4B]/90 rounded-xl hover:scale-102 duration-1000 transition-all border-orange-100 btn-soft" onClick={() => {
+                    <button className="btn text-white bg-[#C98B4B]/90 rounded-xl hover:scale-102 duration-1000 transition-all border-[#F2EFE9] btn-soft" onClick={() => {
                         if(selectedMonth == 1){
                             setSelectedMonth(12)
                             setSelectedYear(prev => prev-1)
@@ -51,8 +51,8 @@ export default function Reservations() {
                             setSelectedMonth(prev => prev-1)
                         }
                     }}>Przed</button>
-                    <div className="badge badge-primary bg-amber-400 text-white border-[#C98B4B]/60">{selectedMonth}/{selectedYear}</div>
-                    <button className="btn text-white bg-[#C98B4B]/90 rounded-xl hover:scale-102 duration-1000 transition-all border-orange-100 btn-soft" onClick={() => {
+                    <div className="badge badge-primary bg-[#c8ac7e] text-white border-[#c4c4c4]/60">{selectedMonth}/{selectedYear}</div>
+                    <button className="btn text-white bg-[#C98B4B]/90 rounded-xl hover:scale-102 duration-1000 transition-all border-[#F2EFE9] btn-soft" onClick={() => {
                         if (selectedMonth === 12) {
                             setSelectedMonth(1);
                             setSelectedYear(prev => prev + 1);

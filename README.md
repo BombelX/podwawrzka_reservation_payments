@@ -104,7 +104,6 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
 
 ## Galeria projektu
 
-> Screenshoty umieść w katalogu `docs/screenshots/` pod nazwami jak poniżej.
 
 ### Rezerwacja + kalendarz
 ![Rezerwacja desktop](docs/screenshots/01-reservation-desktop.png)

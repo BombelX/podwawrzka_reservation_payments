@@ -1,7 +1,7 @@
 {
     "normalDayBackGround": "bg-white",
     "normalDayTextColor": "text-[#2F3B40]",
-    "normalDayBorderColor": "border-[#EDFBE2]",
+    "normalDayBorderColor": "border-[#654831]/4",
     "normalDayHoverBackGround": "hover:bg-[#C98B4B]",
     "normalDayHoverTextColor": "hover:text-white",
     

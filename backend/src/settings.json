@@ -1,8 +1,8 @@
 {
-  "basePrice": 800,
+  "basePrice": 850,
   "weekendIncrease": 100,
   "holidayIncrease": 50,
-  "pricePerPerson": 25,
+  "pricePerPerson": 30,
   "fixedHolidays": [
     "1-1",
     "1-6",
@@ -18,5 +18,5 @@
     "12-25",
     "12-26"
   ],
-  "minimumDuration": 3
+  "minimumDuration": 2
 }

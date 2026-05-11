@@ -294,9 +294,9 @@ router.post("/status", async (req, res) => {
         console.log(orderinfo.length);
         if (isPaidStatus(status) && orderinfo.length > 0) {
             (0, clientNotify_1.sendEmail)(orderinfo[0].users.email, amount / 100, orderId, sid, orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano", orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start, orderinfo[0].reservations.end);
-            (0, clientNotify_1.sendSMS)("Dziękujemy za rezerwację w dniach od " + new Date(orderinfo[0].reservations.start).getDate() + "." + (new Date(orderinfo[0].reservations.start).getMonth() + 1)
+            (0, clientNotify_1.secure.przelewy24.pl)("Dziękujemy za rezerwację w dniach od " + new Date(orderinfo[0].reservations.start).getDate() + "." + (new Date(orderinfo[0].reservations.start).getMonth() + 1)
                 + "." + new Date(orderinfo[0].reservations.start).getFullYear() + " do " + new Date(orderinfo[0].reservations.end).getDate() + "." +
-                (new Date(orderinfo[0].reservations.end).getMonth() + 1) + "." + new Date(orderinfo[0].reservations.end).getFullYear() + "\n Czekamy na Was! ", "+48739973665");
+                (new Date(orderinfo[0].reservations.end).getMonth() + 1) + "." + new Date(orderinfo[0].reservations.end).getFullYear() + "\n Czekamy na Was! ", orderinfo[0].users.phone);
         }
     }
     if (status == "") {
@@ -396,31 +396,6 @@ function priceCheck(nights, guestNumber, start, end) {
     }
     return totalPrice;
 }
-router.get("/paymentmethods", async (_req, res) => {
-    const P24_POS_ID = (process.env.P24_POS_ID ?? "").trim();
-    const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
-    const baseUrl = "https://secure.przelewy24.pl";
-    if (!P24_POS_ID || !P24_API_KEY) {
-        return res.status(500).json({ error: "Brak P24_POS_ID lub P24_API_KEY" });
-    }
-    const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
-    try {
-        const response = await fetch(`${baseUrl}/api/v1/payment/methods/pl?amount=200&currency=PLN`, {
-            method: "GET",
-            headers: {
-                Authorization: `Basic ${auth}`,
-                Accept: "application/json",
-            },
-        });
-        const text = await response.text();
-        console.log("P24 methods status:", response.status);
-        console.log("P24 methods body:", text);
-        return res.status(response.status).send(text);
-    }
-    catch (e) {
-        return res.status(500).json({ error: "paymentmethods request failed", details: e?.message });
-    }
-});
 router.post("/begin", async (req, res) => {
     await cleanupStalePendingPayments();
     const parsed = PaymentsData.safeParse(req.body);
@@ -489,7 +464,7 @@ router.post("/begin", async (req, res) => {
     const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
     const baseUrl = "https://secure.przelewy24.pl";
     if (!P24_POS_ID || !P24_API_KEY) {
-        return res.status(500).json({ error: "Brak P24_POS_ID lub P24_API_KEY" });
+        return res.status(500).json({ error: "Brak P24_POS_ID lub P24_API_KEY (REST API KEY z panelu)" });
     }
     const P24_CRC = (process.env.P24_CRC ?? "").trim();
     const sessionId = String(data.sid).slice(0, 100);

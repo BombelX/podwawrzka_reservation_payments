@@ -588,7 +588,7 @@ export default function Home() {
                 alert("Błąd podczas inicjowania płatności");
               }
             }}
-            className="btn w-full border-none rounded-md py-3 font-bold uppercase tracking-wider transition-all duration-300 shadow-md 
+            className="btn w-full border-none rounded-md py-3 pt-4 pb-4 font-bold uppercase tracking-wider transition-all duration-300 shadow-md 
            bg-[#2F3B40] text-white 
            hover:bg-[#379237] hover:scale-[1.02] 
            disabled:bg-[#EFEBE0] disabled:text-[#BFAF9F] disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100"

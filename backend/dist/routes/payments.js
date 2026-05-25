@@ -399,18 +399,14 @@ function priceCheck(nights, guestNumber, start, end) {
 router.get("/paymentmethods", async (_req, res) => {
     const P24_POS_ID = (process.env.P24_POS_ID ?? "").trim();
     const P24_API_KEY = (process.env.P24_API_KEY ?? "").trim();
-    const baseUrl = "https://secure.przelewy24.pl";
     if (!P24_POS_ID || !P24_API_KEY) {
         return res.status(500).json({ error: "Brak P24_POS_ID lub P24_API_KEY" });
     }
     const auth = Buffer.from(`${P24_POS_ID}:${P24_API_KEY}`).toString("base64");
     try {
-        const response = await fetch(`${baseUrl}/api/v1/payment/methods/pl?amount=200&currency=PLN`, {
+        const response = await fetch(`https://secure.przelewy24.pl/api/v1/payment/methods/{pl}?amount=150&currency=PLN`, {
             method: "GET",
-            headers: {
-                Authorization: `Basic ${auth}`,
-                Accept: "application/json",
-            },
+            headers: { Authorization: `Basic ${auth}` },
         });
         const text = await response.text();
         console.log("P24 methods status:", response.status);

@@ -1,10 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendSMS = sendSMS;
+exports.sendEmailToAdmin = sendEmailToAdmin;
+exports.sendBookingDigest = sendBookingDigest;
 exports.sendEmail = sendEmail;
 // import { request, response, Router } from "express";
 const smsapi_1 = require("smsapi");
 const zod_1 = require("zod");
+const drizzle_orm_1 = require("drizzle-orm");
+const client_1 = require("../db/client");
+const schema_1 = require("../db/schema");
 // const router = Router()
 let smsapi;
 if (process.env.SMS_API != null) {
@@ -17,6 +22,68 @@ const smsData = zod_1.z.object({
     phoneNumber: zod_1.z.string(),
     message: zod_1.z.string().nonempty()
 });
+const adminRecipients = [
+    { email: "adam.rassem@op.pl", name: "Adam Rassem" },
+    { email: "dyzio23@vp.pl", name: "Dyzio" },
+];
+function formatDate(value) {
+    return new Date(value).toLocaleDateString("pl-PL");
+}
+function formatDateTime(value) {
+    return new Date(value).toLocaleString("pl-PL");
+}
+function buildBookingDigestHtml(items) {
+    const rows = items.map(({ reservation, user }) => `
+                <tr>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${user.name} ${user.surname}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${user.email}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${user.phone}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${formatDate(reservation.start)}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${formatDate(reservation.end)}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${reservation.arrivalTime ?? "-"}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${reservation.how_many_people}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${reservation.nights}</td>
+                        <td style="border:1px solid #e5e7eb;padding:10px;">${reservation.price} zł</td>
+                </tr>
+        `).join("");
+    return `
+        <html>
+        <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:30px 0;">
+            <tr>
+                <td align="center">
+                    <table width="1000" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                        <tr>
+                            <td style="padding:30px;">
+                                <h2 style="margin-top:0;color:#333;">Dzienne zestawienie przyszłych rezerwacji</h2>
+                                <p style="color:#555;font-size:15px;">Raport wygenerowany automatycznie o ${formatDateTime(new Date().toISOString())}.</p>
+                                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:20px;font-size:13px;">
+                                    <thead>
+                                        <tr style="background:#f0f2f5;">
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Gość</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">E-mail</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Telefon</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Od</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Do</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Godzina przyjazdu</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Gości</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Nocy</th>
+                                            <th align="left" style="border:1px solid #e5e7eb;padding:10px;">Cena</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${rows}
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        </body>
+        </html>`;
+}
 async function sendSMS(message, phoneNumber) {
     if (smsapi != null) {
         try {
@@ -26,6 +93,202 @@ async function sendSMS(message, phoneNumber) {
         catch {
             return false;
         }
+    }
+}
+async function sendEmailToAdmin(email, amount, orderNumber, paymentNumber, name, arrivalTime, guestNumber, from, to) {
+    try {
+        const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "api-key": `${process.env.EMAIL_API_KEY}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({
+                "sender": {
+                    email: "rezerwacje@podwawrzka.pl",
+                    name: "Podwawrzką"
+                },
+                to: adminRecipients,
+                subject: "Nowa opłacona rezerwacja Podwawrzką",
+                htmlContent: `
+                    <html>
+                    <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:30px 0;">
+                        <tr>
+                        <td align="center">
+
+                            <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+
+                                <tr>
+                                    <td>
+                                    <img 
+                                        src="https://podwawrzka.pl/wp-content/uploads/2024/11/DSC08558-768x512.jpg"
+                                        width="600"
+                                        style="display:block;width:100%;max-width:600px;height:auto;"
+                                        alt="Podwawrzka"
+                                    />
+                                    </td>
+                                </tr>
+
+                            <tr>
+                                <td style="padding:30px;">
+
+                                <h2 style="margin-top:0;color:#333;">Nowa rezerwacja została opłacona</h2>
+                                <p style="color:#555;font-size:15px;">
+                                    Poniżej pełne dane rezerwacji do weryfikacji.
+                                </p>
+                                <table width="100%" cellpadding="12" cellspacing="0" style="border-collapse:collapse;margin:25px 0;">
+                                    <tbody>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Imię i nazwisko</td>
+                                        <td style="border:1px solid #e5e7eb;">${name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">E-mail klienta</td>
+                                        <td style="border:1px solid #e5e7eb;">${email}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Numer zamówienia</td>
+                                        <td style="border:1px solid #e5e7eb;">${orderNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Numer płatności</td>
+                                        <td style="border:1px solid #e5e7eb;">${paymentNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Liczba gości</td>
+                                        <td style="border:1px solid #e5e7eb;">${guestNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Termin od</td>
+                                        <td style="border:1px solid #e5e7eb;">${new Date(from).getDate() + "-" + (new Date(from).getMonth() + 1) + "-" + new Date(from).getFullYear()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Termin do</td>
+                                        <td style="border:1px solid #e5e7eb;">${new Date(to).getDate() + "-" + (new Date(to).getMonth() + 1) + "-" + new Date(to).getFullYear()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Godzina przyjazdu</td>
+                                        <td style="border:1px solid #e5e7eb;">${arrivalTime}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Kwota rezerwacji</td>
+                                        <td style="border:1px solid #e5e7eb;">${amount} zł</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #e5e7eb;background:#f0f2f5;font-weight:bold;">Status</td>
+                                        <td style="border:1px solid #e5e7eb;">Opłacona</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+
+                                </td>
+                            </tr>
+                                <tr>
+                                <td style="padding:0 30px 30px 30px;">
+
+                                    <h3 style="margin:0 0 12px 0;color:#333;font-size:18px;">
+                                    Dojazd
+                                    </h3>
+
+                                    <a href="https://maps.app.goo.gl/vcLS3H4DaDyRGeHe6" target="_blank" style="text-decoration:none;">
+                                    <img
+                                        src="https://i.postimg.cc/MTQNgBwq/image-2026-02-17-170659094.png"
+                                        width="540"
+                                        alt="Mapa dojazdu do Podwawrzka"
+                                        style="display:block;width:100%;max-width:540px;height:auto;border:0;border-radius:10px;"
+                                    />
+                                    </a>
+
+                                    <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:14px auto 0 auto;">
+                                    <tr>
+                                        <td bgcolor="#45a970" style="border-radius:8px;">
+                                        <a
+                                            href="https://maps.app.goo.gl/vcLS3H4DaDyRGeHe6"
+                                            target="_blank"
+                                            style="display:inline-block;padding:12px 18px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;border-radius:8px;"
+                                        >
+                                            Uzyskaj wskazówki dojazdu
+                                        </a>
+                                        </td>
+                                    </tr>
+                                    </table>
+
+                                    <p style="margin:12px 0 0 0;color:#777;font-size:12px;text-align:center;">
+                                    Jeśli przycisk nie działa, otwórz:
+                                    <a href="https://maps.app.goo.gl/vcLS3H4DaDyRGeHe6" target="_blank" style="color:#2f6fed;">
+                                        mapy Google
+                                    </a>
+                                    </p>
+
+                                </td>
+                                </tr>
+
+                            <tr>
+                                <td style="background:#f0f2f5;padding:20px;text-align:center;color:#777;font-size:13px;">
+                                W razie pytań skontaktuj się z nami:<br>
+                                kontakt@podwawrzka.pl <br>
+                                <a href="https://rezerwacje.podwawrzka.pl/paymentStatus/${paymentNumber}" target="_blank" style="color:#2f6fed;">Sprawdź Status Swojego Zamówienia</a>
+                                </td>
+                            </tr>
+
+                            </table>
+
+                        </td>
+                        </tr>
+                    </table>
+
+                    </body>
+                </html>`,
+            })
+        });
+        const data = await resp.json();
+        console.log("EMAIL API RESPONSE:", data);
+        return resp.status;
+    }
+    catch (err) {
+        console.error("sending email failure", err);
+        return 500;
+    }
+}
+async function sendBookingDigest() {
+    const now = new Date().toISOString();
+    const futureReservations = await client_1.db
+        .select({ reservation: schema_1.reservations, user: schema_1.users })
+        .from(schema_1.reservations)
+        .innerJoin(schema_1.users, (0, drizzle_orm_1.eq)(schema_1.reservations.user_id, schema_1.users.id))
+        .where((0, drizzle_orm_1.gte)(schema_1.reservations.end, now))
+        .orderBy((0, drizzle_orm_1.asc)(schema_1.reservations.start));
+    if (futureReservations.length === 0) {
+        return 204;
+    }
+    try {
+        const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                accept: "application/json",
+                "api-key": `${process.env.EMAIL_API_KEY}`,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({
+                sender: {
+                    email: "rezerwacje@podwawrzka.pl",
+                    name: "Podwawrzką",
+                },
+                to: adminRecipients,
+                subject: "Dzienne zestawienie przyszłych rezerwacji Podwawrzką",
+                htmlContent: buildBookingDigestHtml(futureReservations),
+            }),
+        });
+        const data = await resp.json();
+        console.log("BOOKING DIGEST EMAIL API RESPONSE:", data);
+        return resp.status;
+    }
+    catch (err) {
+        console.error("sending booking digest failure", err);
+        return 500;
     }
 }
 async function sendEmail(email, amount, orderNumber, paymentNumber, name, arrivalTime, guestNumber, from, to) {

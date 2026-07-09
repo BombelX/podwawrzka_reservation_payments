@@ -5,7 +5,7 @@ import { mockP24Tokens, payments, reservations, specialPrices, users } from "../
 import * as crypto from "crypto";
 import { and, or, gte, lte, sql, count, eq ,lt, gt, inArray} from "drizzle-orm";
 import winston, { child } from "winston"
-import { sendSMS,sendEmail } from "./clientNotify";
+import { sendSMS, sendEmailToAdmin } from "./clientNotify";
 import { cached3rdPartyReservations, sync3PartyReservations} from "./reservations";
 import { stat } from "fs";
 import { s } from "react-router/dist/development/index-react-server-client-BSxMvS7Z";
@@ -318,7 +318,7 @@ router.post("/status", async (req, res) => {
 
 
       if (isPaidStatus(status) && orderinfo.length > 0){
-          sendEmail(orderinfo[0].users.email,amount/100,orderId,sid,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
+          sendEmailToAdmin(orderinfo[0].users.email,amount/100,orderId,sid,orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano",
           orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start,orderinfo[0].reservations.end);
 
           sendSMS("Dziękujemy za rezerwację w dniach od " +  new Date(orderinfo[0].reservations.start).getDate()+"."+ (new Date(orderinfo[0].reservations.start).getMonth()+1) 

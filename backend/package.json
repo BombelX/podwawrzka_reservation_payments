@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node src/server.ts",
-    "dev": "nodemon --exec npx ts-node src/server.ts"
+    "dev": "nodemon --exec npx ts-node src/server.ts",
+    "reset:local-db": "tsx scripts/reset_local_db.ts"
   },
   "keywords": [],
   "author": "",

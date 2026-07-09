@@ -148,7 +148,7 @@ export default function Home() {
       }
 
       setPrice(
-        guestNumber * typedSettings.extraPersonPrice * CalendarSelectedDate.nights +
+        (guestNumber-1) * typedSettings.extraPersonPrice * CalendarSelectedDate.nights +
           price,
       );
     }

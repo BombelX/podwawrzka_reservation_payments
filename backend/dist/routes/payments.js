@@ -293,7 +293,7 @@ router.post("/status", async (req, res) => {
         const orderinfo = await client_1.db.select().from(schema_1.payments).innerJoin(schema_1.reservations, (0, drizzle_orm_1.eq)(schema_1.payments.reservations_id, schema_1.reservations.id)).innerJoin(schema_1.users, (0, drizzle_orm_1.eq)(schema_1.payments.user_id, schema_1.users.id)).where((0, drizzle_orm_1.eq)(schema_1.payments.token, sid)).limit(1);
         console.log(orderinfo.length);
         if (isPaidStatus(status) && orderinfo.length > 0) {
-            (0, clientNotify_1.sendEmail)(orderinfo[0].users.email, amount / 100, orderId, sid, orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano", orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start, orderinfo[0].reservations.end);
+            (0, clientNotify_1.sendEmailToAdmin)(orderinfo[0].users.email, amount / 100, orderId, sid, orderinfo[0].users.name ?? "Niepodano", orderinfo[0].reservations.arrivalTime ?? "Niepodano", orderinfo[0].reservations.how_many_people ?? 0, orderinfo[0].reservations.start, orderinfo[0].reservations.end);
             (0, clientNotify_1.sendSMS)("Dziękujemy za rezerwację w dniach od " + new Date(orderinfo[0].reservations.start).getDate() + "." + (new Date(orderinfo[0].reservations.start).getMonth() + 1)
                 + "." + new Date(orderinfo[0].reservations.start).getFullYear() + " do " + new Date(orderinfo[0].reservations.end).getDate() + "." +
                 (new Date(orderinfo[0].reservations.end).getMonth() + 1) + "." + new Date(orderinfo[0].reservations.end).getFullYear() + "\n Czekamy na Was! ", "+48739973665");

@@ -6,6 +6,7 @@ import { swaggerSpec } from './swagger';
 import { db } from "./db/client";
 import { reservations } from "./db/schema";
 import { sync3PartyReservations } from './routes/reservations';
+import { sendBookingDigest } from './routes/clientNotify';
 import cors from 'cors';
 import reservationsRouter from './routes/reservations';
 import paymentsRouter from './routes/payments';
@@ -16,6 +17,21 @@ import settingsRouter from './routes/settings';
 
 import { drizzle } from 'drizzle-orm/libsql';
 import { eq } from 'drizzle-orm';
+
+function scheduleDailyBookingDigest() {
+  const now = new Date();
+  const nextRun = new Date(now);
+  nextRun.setHours(24, 0, 0, 0);
+
+  const delay = nextRun.getTime() - now.getTime();
+
+  setTimeout(() => {
+    sendBookingDigest().catch(console.error);
+    setInterval(() => {
+      sendBookingDigest().catch(console.error);
+    }, 24 * 60 * 60 * 1000);
+  }, delay);
+}
 
 const app = express();
 // CORS + logi requestów (pomaga sprawdzić, czy front w ogóle trafia do backendu)
@@ -44,6 +60,7 @@ app.listen(PORT, async () => {
   console.log(`Serwer działa na porcie ${PORT}`);
   try { await sync3PartyReservations(); } catch (e) { console.error(e); }
   try { await cleanupStalePendingPayments(); } catch (e) { console.error(e); }
+  scheduleDailyBookingDigest();
   setInterval(sync3PartyReservations, 120000);
   setInterval(() => {
     cleanupStalePendingPayments().catch(console.error);

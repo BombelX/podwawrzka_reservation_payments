@@ -9,11 +9,24 @@ const express_1 = __importDefault(require("express"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./swagger");
 const reservations_1 = require("./routes/reservations");
+const clientNotify_1 = require("./routes/clientNotify");
 const cors_1 = __importDefault(require("cors"));
 const reservations_2 = __importDefault(require("./routes/reservations"));
 const payments_1 = __importDefault(require("./routes/payments"));
 const payments_2 = require("./routes/payments");
 const settings_1 = __importDefault(require("./routes/settings"));
+function scheduleDailyBookingDigest() {
+    const now = new Date();
+    const nextRun = new Date(now);
+    nextRun.setHours(24, 0, 0, 0);
+    const delay = nextRun.getTime() - now.getTime();
+    setTimeout(() => {
+        (0, clientNotify_1.sendBookingDigest)().catch(console.error);
+        setInterval(() => {
+            (0, clientNotify_1.sendBookingDigest)().catch(console.error);
+        }, 24 * 60 * 60 * 1000);
+    }, delay);
+}
 const app = (0, express_1.default)();
 // CORS + logi requestów (pomaga sprawdzić, czy front w ogóle trafia do backendu)
 app.use((0, cors_1.default)());
@@ -46,6 +59,7 @@ app.listen(PORT, async () => {
     catch (e) {
         console.error(e);
     }
+    scheduleDailyBookingDigest();
     setInterval(reservations_1.sync3PartyReservations, 120000);
     setInterval(() => {
         (0, payments_2.cleanupStalePendingPayments)().catch(console.error);
